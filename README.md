@@ -30,6 +30,8 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 
+> NOTE: TOML [date](https://toml.io/en/v1.0.0#local-date) and [time](https://toml.io/en/v1.0.0#local-time) and [date-time](https://toml.io/en/v1.0.0#offset-date-time) are not currently supported.
+
 ## Installation
 
 ### Requirements
