@@ -1,0 +1,6 @@
+[submodule "kaguya"]
+	path = kaguya
+	url = https://github.com/satoren/kaguya
+[submodule "tomlplusplus"]
+	path = tomlplusplus
+	url = https://github.com/marzer/tomlplusplus

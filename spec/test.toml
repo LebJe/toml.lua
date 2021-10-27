@@ -1,0 +1,56 @@
+author = 'Mark Gillard'
+cpp = 17.0
+description = 'TOML for C++'
+extra_files = [ 'images/banner_small.png', 'images/badge-awesome.svg', 'images/badge-TOML.svg', 'images/badge-C++20.svg' ]
+favicon = 'images/favicon.ico'
+github = 'marzer/tomlplusplus'
+license = [ 'MIT', 'https://github.com/marzer/tomlplusplus/blob/master/LICENSE' ]
+logo = 'images/logo.png'
+name = 'toml++'
+navbar = [ 'namespaces', 'annotated' ]
+show_includes = 0.0
+theme = 'dark'
+
+[autolinks]
+"(?:toml::)?default[_ ]formatters?" = 'classtoml_1_1default__formatter.html'
+"(?:toml::)?json[_ ]formatters?" = 'classtoml_1_1json__formatter.html'
+"(?:toml::)?node[_ ]views?" = 'classtoml_1_1node__view.html'
+"(?:toml::)?parse[_ ]errors?" = 'classtoml_1_1parse__error.html'
+"(?:toml::)?parse[_ ]results?" = 'classtoml_1_1parse__result.html'
+"(?:toml::)?source[_ ]positions?" = 'structtoml_1_1source__position.html'
+"(?:toml::)?source[_ ]regions?" = 'structtoml_1_1source__region.html'
+
+[badges]
+"1. C++20" = [ 'badge-C++20.svg', 'https://en.cppreference.com/w/cpp/compiler_support' ]
+"2. TOML v1.0.0" = [ 'badge-TOML.svg', 'https://toml.io/en/v1.0.0' ]
+"3. CircleCI" = [
+    'https://img.shields.io/circleci/build/github/marzer/tomlplusplus?label=circle%20ci&logo=circleci&logoColor=white&style=flat-square',
+    'https://circleci.com/gh/marzer/tomlplusplus'
+]
+"4. Mentioned in Awesome C++" = [ 'badge-awesome.svg', 'https://github.com/fffaraz/awesome-cpp' ]
+
+[code_blocks]
+macros = [ 'TOML_[A-Z0-9_]+?', 'print_value' ]
+string_literals = [ '_toml' ]
+
+[images]
+paths = [ 'images' ]
+
+[macros]
+"TOML_ABI_NAMESPACE_BOOL(...)" = 'static_assert(true)'
+"TOML_ABI_NAMESPACE_START(...)" = 'static_assert(true)'
+"TOML_ASYMMETRICAL_EQUALITY_OPS(...)" = 'static_assert(true)'
+
+[meta_tags]
+google-site-verification = 'gbtcNgKlNiPSMKkYMw4zWFVWGPH_oU93m9n_-nb4qK8'
+
+[sources]
+paths = [ 'pages' ]
+patterns = [ '*.h', '*.dox' ]
+recursive_paths = [ '../include' ]
+strip_paths = [ '../include' ]
+
+[warnings]
+enabled = 1.0
+treat_as_errors = 0.0
+undocumented = 1.0

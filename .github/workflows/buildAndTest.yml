@@ -1,0 +1,28 @@
+name: "Build and Test"
+on: ["push", "pull_request"]
+
+jobs:
+    RunTestsOnMac:
+        runs-on: "macos-latest"
+        steps:
+            - uses: "actions/checkout@v2"
+            - name: "Add Dependencies"
+              run: |
+                  brew install lua luarocks
+                  luarocks install busted
+            - name: "Build Project"
+              run: "luarocks make"
+            - name: "Test Project"
+              run: "busted"
+    RunTestsOnLinux:
+        runs-on: "ubuntu-latest"
+        steps:
+            - uses: "actions/checkout@v2"
+            - name: "Add Dependencies"
+              run: |
+                  sudo apt install luarocks liblua5.3-dev lua5.3
+                  sudo luarocks install busted
+            - name: "Build Project"
+              run: "sudo luarocks make"
+            - name: "Test Project"
+              run: "busted"

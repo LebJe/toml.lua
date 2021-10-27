@@ -1,0 +1,21 @@
+title = 'TOML Example'
+
+[database]
+data = [ [ 'delta', 'phi' ], [ 3.14 ] ]
+enabled = 1.0
+ports = [ 8000.0, 8001.0, 8002.0 ]
+
+    [database.temp_targets]
+    case = 72.0
+    cpu = 79.5
+
+[owner]
+name = 'Tom Preston-Werner'
+
+[servers.alpha]
+ip = '10.0.0.1'
+role = 'frontend'
+
+[servers.beta]
+ip = '10.0.0.2'
+role = 'backend'
