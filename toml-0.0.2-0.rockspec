@@ -1,5 +1,3 @@
-rockspec_format = "3.0"
-
 package = "toml"
 version = "0.0.2-0"
 
@@ -17,7 +15,7 @@ description = {
 	homepage = "https://github.com/LebJe/toml.lua",
 	issues_url = "https://github.com/LebJe/toml.lua/issues",
 	maintainer = "LebJe <51171427+LebJe@users.noreply.github.com>",
-	labels = { "toml", "parser", "serializer" },
+	--labels = { "toml", "parser", "serializer" },
 }
 
 dependencies = { "lua >= 5.3" }
