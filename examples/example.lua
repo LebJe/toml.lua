@@ -31,9 +31,14 @@ role = "backend"
 
 print("Decoding: \n")
 
-local data = toml.decode(tomlStr)
+local succeeded, data = pcall(toml.decode, tomlStr)
 
-print(inspect(data))
+if succeeded then
+	print(inspect(data))
+else
+	print("An error occurred:\n")
+	print(inspect(data))
+end
 
 print("\n\nEncoding:\n")
 

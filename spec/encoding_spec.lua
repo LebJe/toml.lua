@@ -1,10 +1,9 @@
-
 describe("toml.encode()", function()
 	local toml = require("toml")
 	local data = require("spec/tables")
 
 	it("can encode sample TOML document", function()
-		local fh = io.open("spec/test.toml")
+		local fh = io.open("spec/test-data/test.toml")
 		local expectedTOML = fh:read("*all")
 		fh:close()
 
@@ -12,7 +11,7 @@ describe("toml.encode()", function()
 	end)
 
 	it("can encode another sample TOML document", function()
-		local fh = io.open("spec/test2.toml")
+		local fh = io.open("spec/test-data/test2.toml")
 		local expectedTOML = fh:read("*all")
 		fh:close()
 
@@ -22,7 +21,7 @@ describe("toml.encode()", function()
 	it("can encode massive table", function()
 		local returnedTOML = toml.encode(data.tableForMassiveToml)
 
-		local fh = io.open("spec/massive.toml")
+		local fh = io.open("spec/test-data/massive.toml")
 		local expectedTOML = fh:read("*all")
 		fh:close()
 

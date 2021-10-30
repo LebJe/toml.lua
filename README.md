@@ -79,9 +79,14 @@ f = [1, 2, 3, "4", 5.142]
 local toml = require("toml")
 local inspect = require("inspect")
 
-local table = toml.decode(tomlStr)
+local succeeded, table = pcall(toml.decode, tomlStr)
 
-print(inspect(table))
+if succeeded then
+-- Use `table`.
+	print(inspect(table))
+else
+-- Error details are in `table`.
+end
 
 --[[
 {
@@ -123,6 +128,48 @@ d = 124.2548
 [e]
 f = [ 1.0, 2.0, 3.0, '4', 5.142 ]
 --]]
+```
+
+### Error Handling
+
+```lua
+local tomlStr = [[
+a = 1275892
+b = "Hello, World!"
+c = true
+d = 124. # <-- ERROR: "Expected decimal digit"
+
+[e]
+f = [1, 2, 3, "4", 5.142]
+]]
+
+local toml = require("toml")
+local inspect = require("inspect")
+
+local succeeded, table = pcall(toml.decode, tomlStr)
+
+if succeeded then
+	-- Use decoded table.
+	print(inspect(table))
+else
+	-- Error details are in `table`.
+	print(inspect(table))
+
+	--[[
+	{
+	  begin = {
+	    column = 9,
+	    line = 4
+	  },
+	  end = {
+	    column = 9,
+	    line = 4
+	  },
+	  formattedReason = "Error while parsing floating-point: expected decimal digit, saw '\\n' (at line 4, column 9)",
+	  reason = "Error while parsing floating-point: expected decimal digit, saw '\\n'"
+	}
+--]]
+end
 ```
 
 ### TOML To JSON

@@ -7,8 +7,47 @@
 #include <iostream>
 #include <string>
 
+/// Converts `toml::source_position` into a formatted `std::string`.
+///
+/// Example: "line 194, column 17"
 std::string sourcePositionToString(toml::source_position s) {
 	return "line " + std::to_string(s.line) + ", column " + std::to_string(s.column);
+}
+
+/// Converts `toml:parse_error` into a formatted `std::string`.
+///
+/// Examples:
+///
+/// * If `source.begin == source.end`: "Error while parsing value: could not determine value type
+/// (at line 58, column 17)"
+/// * If `source.begin != source.end`: "Error while parsing value: could not determine value type
+/// (from line 58, column 17 to line 59, column 4)"
+
+std::string parseErrorToString(toml::parse_error e) {
+	auto source = e.source();
+
+	return std::string(e.what()) + " (" +
+		   (source.begin == source.end ? "at " + sourcePositionToString(source.begin)
+									   : "from " + sourcePositionToString(source.begin) + "to " +
+											 sourcePositionToString(source.end)) +
+		   ")";
+}
+
+/// Inserts the values in `e` into `table`.
+void parseErrorToTable(toml::parse_error e, kaguya::LuaTable & table) {
+	auto source = e.source();
+
+	auto beginTable = kaguya::LuaTable(table.state());
+	auto endTable = kaguya::LuaTable(table.state());
+
+	table["reason"] = std::string(e.what());
+	beginTable["line"] = source.begin.line;
+	beginTable["column"] = source.begin.column;
+	endTable["line"] = source.end.line;
+	endTable["column"] = source.end.column;
+	table["begin"] = beginTable;
+	table["end"] = endTable;
+	table["formattedReason"] = parseErrorToString(e);
 }
 
 #ifdef __cplusplus
@@ -43,8 +82,9 @@ extern "C" {
 	}
 
 	int decode(lua_State * L) {
+		kaguya::State state(L);
+
 		try {
-			kaguya::State state(L);
 
 			std::string document = state.popFromStack();
 
@@ -61,19 +101,19 @@ extern "C" {
 		} catch (toml::parse_error & e) {
 			auto source = e.source();
 
-			return luaL_error(
-				L, (std::string(e.what()) + " (" +
-					(source.begin == source.end ? "at " + sourcePositionToString(source.begin)
-												: "from " + sourcePositionToString(source.begin) +
-													  "to " + sourcePositionToString(source.end)) +
-					")")
-					   .c_str());
+			auto table = kaguya::LuaTable(state.state());
+
+			parseErrorToTable(e, table);
+
+			state.pushToStack(table);
+			return lua_error(state.state());
 		}
 	}
 
 	int tomlToJSON(lua_State * L) {
+		kaguya::State state(L);
+
 		try {
-			kaguya::State state(L);
 
 			std::string document = state.popFromStack();
 
@@ -92,13 +132,12 @@ extern "C" {
 		} catch (toml::parse_error & e) {
 			auto source = e.source();
 
-			return luaL_error(
-				L, (std::string(e.what()) + " (" +
-					(source.begin == source.end ? "at " + sourcePositionToString(source.begin)
-												: "from " + sourcePositionToString(source.begin) +
-													  "to " + sourcePositionToString(source.end)) +
-					")")
-					   .c_str());
+			auto table = kaguya::LuaTable(state.state());
+
+			parseErrorToTable(e, table);
+
+			state.pushToStack(table);
+			return lua_error(state.state());
 		}
 	}
 

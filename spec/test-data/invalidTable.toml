@@ -1,0 +1,9 @@
+# From https://github.com/iarna/toml-spec-tests/blob/1880b1a17849f6ad49a7a5e87d6a3ac3963172da/errors/table-invalid-1.toml
+
+[fruit.physical]  # subtable, but to which parent element should it belong?
+  color = "red"
+  shape = "round"
+
+[[fruit]]  # parser must throw an error upon discovering that "fruit" is
+           # an array rather than a table
+  name = "apple"
