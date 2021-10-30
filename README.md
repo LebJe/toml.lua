@@ -19,12 +19,13 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Usage](#usage)
         -   [Encoding](#encoding)
         -   [Decoding](#decoding)
+        -   [Error Handling](#error-handling)
         -   [TOML To JSON](#toml-to-json)
     -   [Dependencies](#dependencies)
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Tue Oct 26 19:40:13 EDT 2021 -->
+<!-- Added by: lebje, at: Fri Oct 29 22:15:04 EDT 2021 -->
 
 <!--te-->
 
