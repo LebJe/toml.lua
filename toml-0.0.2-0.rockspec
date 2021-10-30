@@ -13,7 +13,7 @@ description = {
 	detailed = "toml.lua is a Lua wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize TOML files in Lua.",
 	license = "MIT",
 	homepage = "https://github.com/LebJe/toml.lua",
-	issues_url = "https://github.com/LebJe/toml.lua/issues",
+	--issues_url = "https://github.com/LebJe/toml.lua/issues",
 	maintainer = "LebJe <51171427+LebJe@users.noreply.github.com>",
 	--labels = { "toml", "parser", "serializer" },
 }
