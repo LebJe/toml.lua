@@ -1,68 +1,31 @@
-#include "toml.hpp"
-#include "decoding/decoding.hpp"
-#include "encoding/encoding.hpp"
-#include "kaguya.hpp"
+#include <DateAndTime/dateAndTime.hpp>
 #include <cstddef>
+#include <decoding/decoding.hpp>
+#include <encoding/encoding.hpp>
 #include <exception>
 #include <iostream>
+#include <sol/sol.hpp>
 #include <string>
-
-/// Converts `toml::source_position` into a formatted `std::string`.
-///
-/// Example: "line 194, column 17"
-std::string sourcePositionToString(toml::source_position s) {
-	return "line " + std::to_string(s.line) + ", column " + std::to_string(s.column);
-}
-
-/// Converts `toml:parse_error` into a formatted `std::string`.
-///
-/// Examples:
-///
-/// * If `source.begin == source.end`: "Error while parsing value: could not determine value type
-/// (at line 58, column 17)"
-/// * If `source.begin != source.end`: "Error while parsing value: could not determine value type
-/// (from line 58, column 17 to line 59, column 4)"
-
-std::string parseErrorToString(toml::parse_error e) {
-	auto source = e.source();
-
-	return std::string(e.what()) + " (" +
-		   (source.begin == source.end ? "at " + sourcePositionToString(source.begin)
-									   : "from " + sourcePositionToString(source.begin) + "to " +
-											 sourcePositionToString(source.end)) +
-		   ")";
-}
-
-/// Inserts the values in `e` into `table`.
-void parseErrorToTable(toml::parse_error e, kaguya::LuaTable & table) {
-	auto source = e.source();
-
-	auto beginTable = kaguya::LuaTable(table.state());
-	auto endTable = kaguya::LuaTable(table.state());
-
-	table["reason"] = std::string(e.what());
-	beginTable["line"] = source.begin.line;
-	beginTable["column"] = source.begin.column;
-	endTable["line"] = source.end.line;
-	endTable["column"] = source.end.column;
-	table["begin"] = beginTable;
-	table["end"] = endTable;
-	table["formattedReason"] = parseErrorToString(e);
-}
+#include <toml.hpp>
+#include <utilities/utilities.hpp>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 	int encode(lua_State * L) {
-		kaguya::State state(L);
-		kaguya::LuaTable table;
-		try {
-			table = state.popFromStack();
-		} catch (kaguya::LuaTypeMismatch & e) {
-			return luaL_argerror(
-				L, 1, "A Lua table with strings as keys should be the first and only argument");
-		}
+		sol::state_view state(L);
+		sol::table table;
+
+		sol::stack::check<sol::table>(
+			L, -1,
+			[](lua_State * s, int, sol::type expected, sol::type actual,
+			   const char * message = nullptr) {
+				return luaL_argerror(
+					s, 1, "A Lua table with strings as keys should be the first and only argument");
+			});
+		table = sol::stack::pop<sol::table>(L);
+		;
 
 		toml::table tomlTable;
 
@@ -76,68 +39,85 @@ extern "C" {
 
 		ss << toml::default_formatter(tomlTable);
 
-		state.pushToStack(ss.str());
+		return sol::stack::push(L, ss.str());
 
 		return 1;
 	}
 
 	int decode(lua_State * L) {
-		kaguya::State state(L);
+		sol::state_view state(L);
 
 		try {
 
-			std::string document = state.popFromStack();
+			sol::stack::check<std::string>(
+				L, -1,
+				[](lua_State * s, int, sol::type expected, sol::type actual,
+				   const char * message = nullptr) {
+					return luaL_argerror(
+						s, 1,
+						"A string containing a TOML document should be the first and only "
+						"argument");
+				});
+			std::string document = sol::stack::pop<std::string>(L);
 
 			auto res = toml::parse(document);
 
-			kaguya::LuaTable table = state.newTable();
+			auto table = state.create_table();
 
 			tomlToLuaTable(res, table);
 
 			return table.push();
-		} catch (kaguya::LuaTypeMismatch & e) {
-			return luaL_argerror(
-				L, 1, "A string containing a TOML document should be the first and only argument");
+
 		} catch (toml::parse_error & e) {
 			auto source = e.source();
 
-			auto table = kaguya::LuaTable(state.state());
+			auto table = state.create_table();
 
 			parseErrorToTable(e, table);
 
-			state.pushToStack(table);
-			return lua_error(state.state());
+			sol::stack::push(L, table);
+			return lua_error(L);
+		} catch (std::exception & e) {
+			return luaL_error(
+				L, (std::string("An error occurred during decoding: ") + e.what()).c_str());
 		}
 	}
 
 	int tomlToJSON(lua_State * L) {
-		kaguya::State state(L);
+		sol::state_view state(L);
 
 		try {
+			sol::stack::check<std::string>(
+				L, -1,
+				[](lua_State * s, int, sol::type expected, sol::type actual,
+				   const char * message = nullptr) {
+					return luaL_argerror(
+						s, 1,
+						"A string containing a TOML document should be the first and only "
+						"argument");
+				});
 
-			std::string document = state.popFromStack();
+			std::string document = sol::stack::pop<std::string>(L);
 
 			auto res = toml::parse(document);
 
 			std::stringstream ss;
 
 			ss << toml::json_formatter(res);
+			return sol::stack::push(L, ss.str());
 
-			state.pushToStack(ss.str());
-
-			return 1;
-		} catch (kaguya::LuaTypeMismatch & e) {
-			return luaL_argerror(
-				L, 1, "A string containing a TOML document should be the first and only argument");
 		} catch (toml::parse_error & e) {
 			auto source = e.source();
 
-			auto table = kaguya::LuaTable(state.state());
+			auto table = state.create_table();
 
 			parseErrorToTable(e, table);
 
-			state.pushToStack(table);
-			return lua_error(state.state());
+			sol::stack::push(L, table);
+			return lua_error(L);
+		} catch (std::exception & e) {
+			return luaL_error(
+				L, (std::string("An error occurred during conversion: ") + e.what()).c_str());
 		}
 	}
 
@@ -146,12 +126,52 @@ extern "C" {
 #endif
 
 extern "C" __attribute__((visibility("default"))) int luaopen_toml(lua_State * L) {
-	kaguya::State state(L);
-	kaguya::LuaTable module = state.newTable();
+	sol::state_view state(L);
+	sol::table module = state.create_table();
 
-	module["encode"] = kaguya::luacfunction(&encode);
-	module["decode"] = kaguya::luacfunction(&decode);
-	module["tomlToJSON"] = kaguya::luacfunction(&tomlToJSON);
+	// Setup functions.
+
+	module["encode"] = &encode;
+	module["decode"] = &decode;
+	module["tomlToJSON"] = &tomlToJSON;
+
+	// Setup UserType - Date
+
+	sol::usertype<TOMLDate> tomlDate = module.new_usertype<TOMLDate>(
+		"Date", sol::constructors<TOMLDate(uint16_t, uint8_t, uint8_t)>());
+
+	tomlDate["year"] = sol::property(&TOMLDate::getYear, &TOMLDate::setYear);
+	tomlDate["month"] = sol::property(&TOMLDate::getMonth, &TOMLDate::setMonth);
+	tomlDate["day"] = sol::property(&TOMLDate::getDay, &TOMLDate::setDay);
+
+	// Setup UserType - Time
+
+	sol::usertype<TOMLTime> tomlTime = module.new_usertype<TOMLTime>(
+		"Time", sol::constructors<TOMLTime(uint8_t, uint8_t, uint8_t, uint16_t)>());
+
+	tomlTime["hour"] = sol::property(&TOMLTime::getHour, &TOMLTime::setHour);
+	tomlTime["minute"] = sol::property(&TOMLTime::getMinute, &TOMLTime::setMinute);
+	tomlTime["second"] = sol::property(&TOMLTime::getSecond, &TOMLTime::setSecond);
+	tomlTime["nanoSecond"] = sol::property(&TOMLTime::getNanoSecond, &TOMLTime::setNanoSecond);
+
+	// Setup UserType - TimeOffset
+
+	sol::usertype<TOMLTimeOffset> tomlTimeOffset = module.new_usertype<TOMLTimeOffset>(
+		"TimeOffset", sol::constructors<TOMLTimeOffset(int8_t, int8_t)>());
+
+	tomlTimeOffset["minutes"] = sol::property(&TOMLTimeOffset::minutes);
+
+	// Setup UserType - DateTime
+
+	sol::usertype<TOMLDateTime> tomlDateTime = module.new_usertype<TOMLDateTime>(
+		"DateTime",
+		sol::constructors<
+			TOMLDateTime(TOMLDate, TOMLTime), TOMLDateTime(TOMLDate, TOMLTime, TOMLTimeOffset)>());
+
+	tomlDateTime["date"] = sol::property(&TOMLDateTime::getDate, &TOMLDateTime::setDate);
+	tomlDateTime["time"] = sol::property(&TOMLDateTime::getTime, &TOMLDateTime::setTime);
+	tomlDateTime["timeOffset"] =
+		sol::property(&TOMLDateTime::getTimeOffset, &TOMLDateTime::setTimeOffset);
 
 	return module.push();
 }

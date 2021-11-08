@@ -1,9 +1,16 @@
-#include "../kaguya.hpp"
-#include "../toml.hpp"
+#ifndef ENCODING_H
+#define ENCODING_H
+
+#include <DateAndTime/dateAndTime.hpp>
 #include <cstddef>
+#include <sol/sol.hpp>
 #include <string>
+#include <toml.hpp>
+#include <utilities/utilities.hpp>
 
 /// Convert `LuaTable` into a `toml::table`.
-toml::table tomlTableFromLuaTable(kaguya::LuaTable & luaTable);
-toml::array tomlArrayFromLuaArray(kaguya::LuaTable & luaArray);
-void * luaValueToTomlNode(kaguya::LuaRef & luaValue);
+toml::table tomlTableFromLuaTable(sol::table luaTable);
+toml::array tomlArrayFromLuaArray(sol::table luaArray);
+void * luaValueToTomlNode(sol::object & luaValue);
+
+#endif /* ENCODING_H */

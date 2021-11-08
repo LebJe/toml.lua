@@ -2,14 +2,15 @@ title = 'TOML Example'
 
 [database]
 data = [ [ 'delta', 'phi' ], [ 3.14 ] ]
-enabled = 1.0
-ports = [ 8000.0, 8001.0, 8002.0 ]
+enabled = 1
+ports = [ 8000, 8001, 8002 ]
 
     [database.temp_targets]
-    case = 72.0
+    case = 72
     cpu = 79.5
 
 [owner]
+dob = 1979-05-27T07:32:00-08:00
 name = 'Tom Preston-Werner'
 
 [servers.alpha]

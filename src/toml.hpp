@@ -2372,7 +2372,7 @@ TOML_NAMESPACE_START {
 			using type = impl::unwrap_node<T>;
 			static_assert(
 				(impl::is_native<type> ||
-				 impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+				 impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>,
 				"The template type argument of node::ref() must be one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 			TOML_ASSERT(
@@ -2473,7 +2473,7 @@ TOML_NAMESPACE_START {
 			using type = impl::unwrap_node<T>;
 			static_assert(
 				(impl::is_native<type> ||
-				 impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+				 impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>,
 				"The template type argument of node::is() must be one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
@@ -2512,7 +2512,7 @@ TOML_NAMESPACE_START {
 			static_assert(
 				std::is_void_v<type> ||
 					((impl::is_native<type> ||
-					  impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>),
+					  impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>),
 				"The template type argument of node::is_homogeneous() must be void or one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 			return is_homogeneous(impl::node_type_of<type>);
@@ -2576,7 +2576,7 @@ TOML_NAMESPACE_START {
 			using type = impl::unwrap_node<T>;
 			static_assert(
 				(impl::is_native<type> ||
-				 impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+				 impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>,
 				"The template type argument of node::as() must be one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
@@ -2604,7 +2604,7 @@ TOML_NAMESPACE_START {
 			using type = impl::unwrap_node<T>;
 			static_assert(
 				(impl::is_native<type> ||
-				 impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+				 impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>,
 				"The template type argument of node::as() must be one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
@@ -3137,7 +3137,7 @@ TOML_NAMESPACE_START {
 			static_assert(
 				std::is_void_v<type> ||
 					((impl::is_native<type> ||
-					  impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>),
+					  impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>),
 				"The template type argument of value::is_homogeneous() must be void or one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
@@ -3401,12 +3401,12 @@ TOML_NAMESPACE_START {
 			"supported on Windows with TOML_WINDOWS_COMPAT enabled.");
 
 		static_assert(
-			(is_native<T> || can_represent_native<T>)&&!is_cvref<T>,
+			(is_native<T> || can_represent_native<T>) &&!is_cvref<T>,
 			TOML_SA_VALUE_EXACT_FUNC_MESSAGE("return type of node::value_exact()"));
 
 		// prevent additional compiler error spam when the static_assert fails by gating behind if
 		// constexpr
-		if constexpr ((is_native<T> || can_represent_native<T>)&&!is_cvref<T>) {
+		if constexpr ((is_native<T> || can_represent_native<T>) &&!is_cvref<T>) {
 			if (type() == node_type_of<T>) return { this->get_value_exact<T>() };
 			else
 				return {};
@@ -3422,7 +3422,7 @@ TOML_NAMESPACE_START {
 			"supported on Windows with TOML_WINDOWS_COMPAT enabled.");
 		static_assert(
 			(is_native<T> || can_represent_native<T> ||
-			 can_partially_represent_native<T>)&&!is_cvref<T>,
+			 can_partially_represent_native<T>) &&!is_cvref<T>,
 			TOML_SA_VALUE_FUNC_MESSAGE("return type of node::value()"));
 
 		// when asking for strings, dates, times and date_times there's no 'fuzzy' conversion
@@ -3889,7 +3889,7 @@ TOML_NAMESPACE_START {
 			static_assert(
 				std::is_void_v<type> ||
 					((impl::is_native<type> ||
-					  impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>),
+					  impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>),
 				"The template type argument of array::is_homogeneous() must be void or one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 			return is_homogeneous(impl::node_type_of<type>);
@@ -4022,7 +4022,7 @@ TOML_NAMESPACE_START {
 			using type = impl::unwrap_node<ElemType>;
 			static_assert(
 				(impl::is_native<type> ||
-				 impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+				 impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>,
 				"Emplacement type parameter must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
 			return { elements.emplace(
@@ -4062,7 +4062,7 @@ TOML_NAMESPACE_START {
 			using type = impl::unwrap_node<ElemType>;
 			static_assert(
 				(impl::is_native<type> ||
-				 impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+				 impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>,
 				"Emplacement type parameter must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
 			auto nde = new impl::wrap_node<type> { static_cast<Args &&>(args)... };
@@ -4400,7 +4400,7 @@ TOML_NAMESPACE_START {
 			static_assert(
 				std::is_void_v<type> ||
 					((impl::is_native<type> ||
-					  impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>),
+					  impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>),
 				"The template type argument of table::is_homogeneous() must be void or one "
 				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 			return is_homogeneous(impl::node_type_of<type>);
@@ -4554,7 +4554,7 @@ TOML_NAMESPACE_START {
 				using type = impl::unwrap_node<ValueType>;
 				static_assert(
 					(impl::is_native<type> ||
-					 impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+					 impl::is_one_of<type, table, array>) &&!impl::is_cvref<type>,
 					"The emplacement type argument of table::emplace() must be one "
 					"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
@@ -6404,7 +6404,7 @@ TOML_NAMESPACE_END;
 	//***************************************************************************************
 
 	#if TOML_EXCEPTIONS
-		#define TOML_ERROR_CHECK (void)0
+		#define TOML_ERROR_CHECK (void) 0
 		#define TOML_ERROR throw parse_error
 	#else
 		#define TOML_ERROR_CHECK                                                                   \
@@ -7261,7 +7261,7 @@ TOML_NAMESPACE_START {
 				size_t child_table_count {};
 				size_t child_table_array_count {};
 				for (auto && [child_k, child_v] : child_tbl) {
-					(void)child_k;
+					(void) child_k;
 					const auto child_type = child_v.type();
 					TOML_ASSUME(child_type != node_type::none);
 					switch (child_type) {
@@ -7878,7 +7878,7 @@ TOML_NAMESPACE_START {
 		if (ntype == node_type::none) ntype = map.cbegin()->second->type();
 
 		for (const auto & [k, v] : map) {
-			(void)k;
+			(void) k;
 			if (v->type() != ntype) return false;
 		}
 
@@ -7895,7 +7895,7 @@ TOML_NAMESPACE_START {
 		}
 		if (ntype == node_type::none) ntype = map.cbegin()->second->type();
 		for (const auto & [k, v] : map) {
-			(void)k;
+			(void) k;
 			if (v->type() != ntype) {
 				first_nonmatch = v.get();
 				return false;
@@ -7974,7 +7974,7 @@ TOML_NAMESPACE_END;
 			#define TOML_ERROR_CHECK                                                               \
 				if (reader.error()) return nullptr
 		#else
-			#define TOML_ERROR_CHECK (void)0
+			#define TOML_ERROR_CHECK (void) 0
 		#endif
 
 TOML_IMPL_NAMESPACE_START {
@@ -10663,7 +10663,7 @@ TOML_IMPL_NAMESPACE_START {
 
 				auto end = nde.source_.end;
 				for (auto & [k, v] : tbl.map) {
-					(void)k;
+					(void) k;
 					update_region_ends(*v);
 					if (end < v->source_.end) end = v->source_.end;
 				}

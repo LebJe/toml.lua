@@ -1,12 +1,17 @@
-#include "../kaguya.hpp"
-#include "../toml.hpp"
+#ifndef DECODING_H
+#define DECODING_H
+
+#include "DateAndTime/dateAndTime.hpp"
 #include <cstddef>
+#include <sol/sol.hpp>
 #include <string>
+#include <toml.hpp>
 
 /// Convert `luaTable` into a `toml::table`.
-void tomlToLuaTable(toml::table & table, kaguya::LuaTable & lTable);
+void tomlToLuaTable(toml::table & table, sol::table & lTable);
 
-void insertNodeInTable(
-	kaguya::LuaTable & luaTable, std::string * key, size_t * index, void * value);
+void insertNodeInTable(sol::table & luaTable, std::string * key, size_t * index, void * value);
 
-void tomlArrayToLuaArray(toml::array & tomlArray, kaguya::LuaTable & luaTable);
+void tomlArrayToLuaArray(toml::array & tomlArray, sol::table & luaTable);
+
+#endif /* DECODING_H */

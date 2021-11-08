@@ -59,12 +59,14 @@ if(NOT LUA_INCLUDE_DIR OR (WIN32 AND NOT LUA_LIBRARIES))
     find_package(Lua REQUIRED)
 endif()
 
-include_directories(${LUA_INCLUDE_DIR})
+include_directories(${LUA_INCLUDE_DIR} src)
 
 set(SOURCES
     src/toml.cpp
 	src/decoding/decoding.cpp
 	src/encoding/encoding.cpp
+	src/DateAndTime/dateAndTime.cpp
+	src/utilities/utilities.cpp
 )
 
 add_library(toml.lua MODULE ${SOURCES})

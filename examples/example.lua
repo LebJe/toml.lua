@@ -43,3 +43,6 @@ end
 print("\n\nEncoding:\n")
 
 print(toml.encode(data))
+
+print("\n\nTOML to JSON:\n")
+print(toml.tomlToJSON(tomlStr))

@@ -1,3 +1,4 @@
+Standard: c++17
 TabWidth: 4
 UseCRLF: false
 UseTab: Always
@@ -22,3 +23,4 @@ SpaceBeforeParens: ControlStatements
 SpaceAroundPointerQualifiers: Both
 PointerAlignment: Middle
 IndentPPDirectives: BeforeHash
+SpaceAfterCStyleCast: true

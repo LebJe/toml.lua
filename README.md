@@ -13,25 +13,22 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
 -   [toml.lua](#tomllua)
     -   [Table of Contents](#table-of-contents)
     -   [Installation](#installation)
-        -   [Requirements](#requirements)
-        -   [LuaRocks](#luarocks)
-        -   [Manual Compilation](#manual-compilation)
+        _ [Requirements](#requirements)
+        _ [LuaRocks](#luarocks) \* [Manual Compilation](#manual-compilation)
     -   [Usage](#usage)
-        -   [Encoding](#encoding)
-        -   [Decoding](#decoding)
-        -   [Error Handling](#error-handling)
-        -   [TOML To JSON](#toml-to-json)
+        _ [Decoding](#decoding)
+        _ [Encoding](#encoding)
+        _ [Error Handling](#error-handling)
+        _ [TOML To JSON](#toml-to-json)
     -   [Dependencies](#dependencies)
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Fri Oct 29 22:15:04 EDT 2021 -->
+<!-- Added by: lebje, at: Mon Nov  8 09:46:03 EST 2021 -->
 
 <!--te-->
 
 Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
-
-> NOTE: TOML [date](https://toml.io/en/v1.0.0#local-date) and [time](https://toml.io/en/v1.0.0#local-time) and [date-time](https://toml.io/en/v1.0.0#offset-date-time) are not currently supported.
 
 ## Installation
 
@@ -64,17 +61,20 @@ luarocks install toml
 
 ## Usage
 
-### Encoding
+### Decoding
 
 ```lua
 local tomlStr = [[
 a = 1275892
-b = "Hello, World!"
+b = 'Hello, World!'
 c = true
 d = 124.2548
 
 [e]
-f = [1, 2, 3, "4", 5.142]
+f = [ 1, 2, 3, '4', 5.142 ]
+g = 1979-05-27
+h = 07:32:00
+i = 1979-05-27T07:32:00-07:00
 ]]
 
 local toml = require("toml")
@@ -91,43 +91,53 @@ end
 
 --[[
 {
-  a = 1275892,
-  b = "Hello, World!",
-  c = 1,
-  d = 124.2548,
-  e = {
-    f = { 1, 2, 3, "4", 5.142 }
-  }
+	a = 1275892,
+	b = "Hello, World!",
+	c = true,
+	d = 124.2548,
+	e = {
+		f = { 1, 2, 3, "4", 5.142 },
+		g = <userdata 1> -- 1979-05-27,
+		h = <userdata 2> -- 07:32:00,
+		i = <userdata 3> -- 1979-05-27T07:32:00-07:00
+	}
 }
 --]]
 ```
 
-### Decoding
+### Encoding
 
 ```lua
+local toml = require("toml")
+
 local table = {
-  a = 1275892,
-  b = "Hello, World!",
-  c = 1,
-  d = 124.2548,
-  e = {
-    f = { 1, 2, 3, "4", 5.142 }
-  }
+	a = 1275892,
+	b = "Hello, World!",
+	c = true,
+	d = 124.2548,
+	e = {
+		f = { 1, 2, 3, "4", 5.142 },
+		g = toml.Date.new(1979, 05, 27),
+		h = toml.Time.new(7, 32, 0, 0),
+		i = toml.DateTime.new(toml.Date.new(1979, 05, 27), toml.Time.new(7, 32, 0, 0), toml.TimeOffset.new(-7, 0))
+	}
 }
 
-local toml = require("toml")
 local tomlDocument = toml.encode(table)
 
 print(tomlDocument)
 
 --[[
-a = 1275892.0
+a = 1275892
 b = 'Hello, World!'
-c = 1.0
+c = true
 d = 124.2548
 
 [e]
-f = [ 1.0, 2.0, 3.0, '4', 5.142 ]
+f = [ 1, 2, 3, '4', 5.142 ]
+g = 1979-05-27
+h = 07:32:00
+i = 1979-05-27T07:32:00-07:00
 --]]
 ```
 
@@ -136,12 +146,15 @@ f = [ 1.0, 2.0, 3.0, '4', 5.142 ]
 ```lua
 local tomlStr = [[
 a = 1275892
-b = "Hello, World!"
+b = 'Hello, World!'
 c = true
 d = 124. # <-- ERROR: "Expected decimal digit"
 
 [e]
-f = [1, 2, 3, "4", 5.142]
+f = [ 1, 2, 3, '4', 5.142 ]
+g = 1979-05-27
+h = 07:32:00
+i = 1979-05-27T07:32:00-07:00
 ]]
 
 local toml = require("toml")
@@ -158,16 +171,16 @@ else
 
 	--[[
 	{
-	  begin = {
-	    column = 9,
-	    line = 4
-	  },
-	  end = {
-	    column = 9,
-	    line = 4
-	  },
-	  formattedReason = "Error while parsing floating-point: expected decimal digit, saw '\\n' (at line 4, column 9)",
-	  reason = "Error while parsing floating-point: expected decimal digit, saw '\\n'"
+		begin = {
+			column = 9,
+			line = 4
+		},
+		end = {
+			column = 9,
+			line = 4
+		},
+		formattedReason = "Error while parsing floating-point: expected decimal digit, saw '\\n' (at line 4, column 9)",
+		reason = "Error while parsing floating-point: expected decimal digit, saw '\\n'"
 	}
 --]]
 end
@@ -178,12 +191,15 @@ end
 ```lua
 local tomlStr = [[
 a = 1275892
-b = "Hello, World!"
+b = 'Hello, World!'
 c = true
 d = 124.2548
 
 [e]
-f = [1, 2, 3, "4", 5.142]
+f = [ 1, 2, 3, '4', 5.142 ]
+g = 1979-05-27
+h = 07:32:00
+i = 1979-05-27T07:32:00-07:00
 ]]
 
 local toml = require("toml")
@@ -194,18 +210,21 @@ print(json)
 --[[
 {
 	"a" : 1275892,
-    "b" : "Hello, World!",
-    "c" : true,
-    "d" : 124.2548,
-    "e" : {
-        "f" : [
-            1,
-            2,
-            3,
-            "4",
-            5.142
-        ]
-    }
+	"b" : "Hello, World!",
+	"c" : true,
+	"d" : 124.2548,
+	"e" : {
+		"f" : [
+			1,
+			2,
+			3,
+			"4",
+			5.142
+		],
+		"g" : "1979-05-27",
+		"h" : "07:32:00",
+		"i" : "1979-05-27T07:32:00-07:00"
+	}
 }
 --]]
 ```
@@ -213,13 +232,13 @@ print(json)
 ## Dependencies
 
 -   [toml++](https://github.com/marzer/tomlplusplus/)
--   [kaguya](https://github.com/satoren/kaguya)
+-   [sol2](https://github.com/ThePhD/sol2)
 
 ## Licenses
 
 The [toml++](https://github.com/marzer/tomlplusplus/) license is available in the `tomlplusplus` directory in the `LICENSE` file.
 
-The [kaguya](https://github.com/satoren/kaguya) license is available in the `kaguya` directory in the `LICENSE` file.
+The [sol](https://github.com/ThePhD/sol2) license is available in the `sol2` directory in the `LICENSE.txt` file.
 
 ## Contributing
 

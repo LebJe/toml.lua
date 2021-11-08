@@ -1,5 +1,5 @@
 author = 'Mark Gillard'
-cpp = 17.0
+cpp = 17
 description = 'TOML for C++'
 extra_files = [ 'images/banner_small.png', 'images/badge-awesome.svg', 'images/badge-TOML.svg', 'images/badge-C++20.svg' ]
 favicon = 'images/favicon.ico'
@@ -8,7 +8,7 @@ license = [ 'MIT', 'https://github.com/marzer/tomlplusplus/blob/master/LICENSE' 
 logo = 'images/logo.png'
 name = 'toml++'
 navbar = [ 'namespaces', 'annotated' ]
-show_includes = 0.0
+show_includes = 0
 theme = 'dark'
 
 [autolinks]
@@ -51,6 +51,6 @@ recursive_paths = [ '../include' ]
 strip_paths = [ '../include' ]
 
 [warnings]
-enabled = 1.0
-treat_as_errors = 0.0
-undocumented = 1.0
+enabled = 1
+treat_as_errors = 0
+undocumented = 1
