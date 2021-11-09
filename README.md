@@ -118,9 +118,19 @@ local table = {
 	d = 124.2548,
 	e = {
 		f = { 1, 2, 3, "4", 5.142 },
-		g = toml.Date.new(1979, 05, 27),
-		h = toml.Time.new(7, 32, 0, 0),
-		i = toml.DateTime.new(toml.Date.new(1979, 05, 27), toml.Time.new(7, 32, 0, 0), toml.TimeOffset.new(-7, 0))
+		g = toml.Date.new(1979,   05,     27),
+		--                year   month   day
+
+		h = toml.Time.new( 7,     32,      0,        0),
+		--                hour   minute  second   nanoSecond
+
+		i = toml.DateTime.new(
+			toml.Date.new(1979, 05, 27),
+			toml.Time.new(7, 32, 0, 0),
+
+			toml.TimeOffset.new(  -7,     0)
+			--                   hour   minute
+		)
 	}
 }
 
