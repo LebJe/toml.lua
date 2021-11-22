@@ -1,13 +1,19 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
-    - repo: "https://github.com/pre-commit/mirrors-prettier"
+    - repo: "https://github.com/pre-commit/mirrors-prettier.git"
       rev: "v2.4.1"
       hooks:
           - id: "prettier"
             name: "Format Markdown"
             tags: ["md"]
-    - repo: "git://github.com/doublify/pre-commit-clang-format"
+    - repo: "https://github.com/doublify/pre-commit-clang-format.git"
       rev: "62302476d0da01515660132d76902359bed0f782"
       hooks:
           - id: "clang-format"
+            exclude: "sol2/|src/toml.hpp|src/sol/"
+    - repo: "https://github.com/LebJe/PreCommitStyLua.git"
+      rev: "c7f96e8ba459f1c6c27cb21cc6a9dc05e14745ca"
+      hooks:
+          - id: "stylua"
+            exclude: "sol2/"

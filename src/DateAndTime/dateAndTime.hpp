@@ -14,7 +14,7 @@ struct TOMLDate {
 
 	uint16_t getYear() const { return date.year; };
 	uint8_t getMonth() const { return date.month; };
-	 uint8_t getDay() const { return date.day; };
+	uint8_t getDay() const { return date.day; };
 
 	void setYear(uint16_t year) { date.year = year; };
 	void setMonth(uint8_t month) { date.month = month; };
@@ -39,8 +39,8 @@ struct TOMLTime {
 
 	uint8_t getHour() const { return time.hour; };
 	uint8_t getMinute() const { return time.minute; };
-	 uint8_t getSecond() const { return time.second; };
-	 uint32_t getNanoSecond() const { return time.nanosecond; };
+	uint8_t getSecond() const { return time.second; };
+	uint32_t getNanoSecond() const { return time.nanosecond; };
 
 	void setHour(uint8_t hour) { time.hour = hour; };
 	void setMinute(uint8_t minute) { time.minute = minute; };

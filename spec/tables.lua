@@ -77,7 +77,7 @@ M.tableForTest2Toml = {
 	},
 	owner = {
 		name = "Tom Preston-Werner",
-		dob = toml.DateTime.new(toml.Date.new(1979, 05, 27), toml.Time.new(7, 32, 0, 0), toml.TimeOffset.new(-8, 0))
+		dob = toml.DateTime.new(toml.Date.new(1979, 05, 27), toml.Time.new(7, 32, 0, 0), toml.TimeOffset.new(-8, 0)),
 	},
 	servers = {
 		alpha = {
