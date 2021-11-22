@@ -1,0 +1,11 @@
+name: "Run pre-commit"
+on: ["push", "pull_request"]
+
+jobs:
+    PreCommit:
+        runs-on: "macos-latest"
+        steps:
+            - uses: "actions/checkout@v2"
+            - name: "Install Dependencies"
+              run: "brew bundle"
+            - uses: "LebJe/pre-commit-composite-action@0.0.1"
