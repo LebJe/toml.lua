@@ -19,8 +19,8 @@ extern "C" {
 
 		sol::stack::check<sol::table>(
 			L, -1,
-			[](lua_State * s, int, sol::type expected, sol::type actual,
-			   const char * message = nullptr) {
+			[](lua_State * s, int, sol::type, sol::type,
+			   const char * = nullptr) {
 				return luaL_argerror(
 					s, 1, "A Lua table with strings as keys should be the first and only argument");
 			});
@@ -51,8 +51,8 @@ extern "C" {
 
 			sol::stack::check<std::string>(
 				L, -1,
-				[](lua_State * s, int, sol::type expected, sol::type actual,
-				   const char * message = nullptr) {
+				[](lua_State * s, int, sol::type, sol::type,
+				   const char * = nullptr) {
 					return luaL_argerror(
 						s, 1,
 						"A string containing a TOML document should be the first and only "
@@ -89,8 +89,8 @@ extern "C" {
 		try {
 			sol::stack::check<std::string>(
 				L, -1,
-				[](lua_State * s, int, sol::type expected, sol::type actual,
-				   const char * message = nullptr) {
+				[](lua_State * s, int, sol::type, sol::type,
+				   const char * = nullptr) {
 					return luaL_argerror(
 						s, 1,
 						"A string containing a TOML document should be the first and only "
