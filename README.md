@@ -1,6 +1,6 @@
 # toml.lua
 
-**TOML parser and serializer for Lua. Powered by [toml++](https://github.com/marzer/tomlplusplus/).**
+**TOML v1.0.0 parser and serializer for Lua. Powered by [toml++](https://github.com/marzer/tomlplusplus/).**
 
 [![Build and Test](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest.yml)
 
