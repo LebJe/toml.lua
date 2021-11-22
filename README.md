@@ -253,7 +253,7 @@ The [sol](https://github.com/ThePhD/sol2) license is available in the `sol2` dir
 
 ## Contributing
 
-Before committing, please install [pre-commit](https://pre-commit.com), [clang-format](https://clang.llvm.org/docs/ClangFormat.html), and [Prettier](https://prettier.io), then install the pre-commit hook:
+Before committing, please install [pre-commit](https://pre-commit.com), [clang-format](https://clang.llvm.org/docs/ClangFormat.html), [StyLua](https://github.com/JohnnyMorganz/StyLua), and [Prettier](https://prettier.io), then install the pre-commit hook:
 
 ```bash
 $ brew bundle # install the packages specified in Brewfile
