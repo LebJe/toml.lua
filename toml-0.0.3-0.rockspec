@@ -18,7 +18,7 @@ description = {
 	--labels = { "toml", "parser", "serializer" },
 }
 
-dependencies = { "lua >= 5.3" }
+dependencies = { "lua >= 5.1" }
 
 build = {
 	type = "cmake",
