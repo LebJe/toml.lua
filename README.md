@@ -41,7 +41,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 -   A C++ 17 compiler
 -   [CMake](https://cmake.org)
 -   `lua.h`, `lualib.h`, `lauxlib.h`
--   Lua >= 5.3 or LuaJIT
+-   Lua >= 5.1 or LuaJIT
 
 ### LuaRocks
 
