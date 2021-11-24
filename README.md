@@ -25,7 +25,7 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Mon Nov  8 11:56:40 EST 2021 -->
+<!-- Added by: lebje, at: Wed Nov 24 13:59:16 EST 2021 -->
 
 <!--te-->
 

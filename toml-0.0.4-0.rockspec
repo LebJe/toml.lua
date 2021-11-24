@@ -1,5 +1,5 @@
 package = "toml"
-version = "0.0.3-0"
+version = "0.0.4-0"
 
 local v = version:gsub("%-%d", "")
 
@@ -9,7 +9,7 @@ source = {
 }
 
 description = {
-	summary = "TOML parser and serializer for Lua. Powered by toml++.",
+	summary = "TOML v1.0.0 parser and serializer for Lua. Powered by toml++.",
 	detailed = "toml.lua is a Lua wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize TOML files in Lua.",
 	license = "MIT",
 	homepage = "https://github.com/LebJe/toml.lua",
