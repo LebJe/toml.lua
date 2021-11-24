@@ -20,17 +20,24 @@ jobs:
         runs-on: "ubuntu-latest"
         strategy:
             matrix:
-                compiler: ["g++", "clang++"]
+                compiler: ["gcc", "clang"]
         steps:
             - uses: "actions/checkout@v2"
             - name: "Add Dependencies"
               run: |
-                  sudo apt install -yq luarocks liblua5.1-0-dev lua5.1
+                  export COMPILER=${{ matrix.compiler }}
+                  source scripts/compilerName.sh
+                  sudo apt update
+                  sudo apt install -yq liblua5.1-0-dev lua5.1 "$C_COMPILER_PACKAGE" "$CXX_COMPILER_PACKAGE"
+                  ./scripts/buildLuaRocks.sh
                   sudo luarocks install busted
             - name: "Build Project"
               run: |
-                  export CXX=/usr/bin/${{ matrix.compiler }}
-                  sudo luarocks make
+                  export COMPILER=${{ matrix.compiler }}
+                  source scripts/compilerName.sh
+                  luarocks config "variables.CMAKE_C_COMPILER" "$C_COMPILER"
+                  luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
+                  sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
               run: "busted"
     RunTestsOnLinuxLua52:
@@ -38,17 +45,24 @@ jobs:
         runs-on: "ubuntu-latest"
         strategy:
             matrix:
-                compiler: ["g++", "clang++"]
+                compiler: ["gcc", "clang"]
         steps:
             - uses: "actions/checkout@v2"
             - name: "Add Dependencies"
               run: |
-                  sudo apt install -yq luarocks liblua5.2-dev lua5.2
-                  sudo luarocks install busted
+                  export COMPILER=${{ matrix.compiler }}
+                    source scripts/compilerName.sh
+                    sudo apt update
+                    sudo apt install -yq liblua5.2-dev lua5.2 "$C_COMPILER_PACKAGE" "$CXX_COMPILER_PACKAGE"
+                    ./scripts/buildLuaRocks.sh
+                    sudo luarocks install busted
             - name: "Build Project"
               run: |
-                  export CXX=/usr/bin/${{ matrix.compiler }}
-                  sudo luarocks make
+                  export COMPILER=${{ matrix.compiler }}
+                  source scripts/compilerName.sh
+                  luarocks config "variables.CMAKE_C_COMPILER" "$C_COMPILER"
+                  luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
+                  sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
               run: "busted"
     RunTestsOnLinuxLua53:
@@ -56,17 +70,24 @@ jobs:
         runs-on: "ubuntu-latest"
         strategy:
             matrix:
-                compiler: ["g++", "clang++"]
+                compiler: ["gcc", "clang"]
         steps:
             - uses: "actions/checkout@v2"
             - name: "Add Dependencies"
               run: |
-                  sudo apt install -yq luarocks liblua5.3-dev lua5.3 g++ clang
+                  export COMPILER=${{ matrix.compiler }}
+                  source scripts/compilerName.sh
+                  sudo apt update
+                  sudo apt install -yq liblua5.3-dev lua5.3 "$C_COMPILER_PACKAGE" "$CXX_COMPILER_PACKAGE"
+                  ./scripts/buildLuaRocks.sh
                   sudo luarocks install busted
             - name: "Build Project"
               run: |
-                  export CXX=/usr/bin/${{ matrix.compiler }}
-                  sudo luarocks make
+                  export COMPILER=${{ matrix.compiler }}
+                  source scripts/compilerName.sh
+                  luarocks config "variables.CMAKE_C_COMPILER" "$C_COMPILER"
+                  luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
+                  sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
               run: "busted"
     RunTestsOnLinuxLuaJIT:
@@ -74,16 +95,23 @@ jobs:
         runs-on: "ubuntu-latest"
         strategy:
             matrix:
-                compiler: ["g++", "clang++"]
+                compiler: ["gcc", "clang"]
         steps:
             - uses: "actions/checkout@v2"
             - name: "Add Dependencies"
               run: |
-                  sudo apt install -yq luarocks luajit libluajit-5.1-dev libluajit-5.1-2
+                  export COMPILER=${{ matrix.compiler }}
+                  source scripts/compilerName.sh
+                  sudo apt update
+                  sudo apt install -yq luajit libluajit-5.1-dev libluajit-5.1-2 "$C_COMPILER_PACKAGE" "$CXX_COMPILER_PACKAGE"
+                  ./scripts/buildLuaRocks.sh
                   sudo luarocks install busted
             - name: "Build Project"
               run: |
-                  export CXX=/usr/bin/${{ matrix.compiler }}
-                  sudo luarocks make
+                  export COMPILER=${{ matrix.compiler }}
+                  source scripts/compilerName.sh
+                  luarocks config "variables.CMAKE_C_COMPILER" "$C_COMPILER"
+                  luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
+                  sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
               run: "busted"

@@ -5,7 +5,7 @@ repos:
       rev: "v2.4.1"
       hooks:
           - id: "prettier"
-            name: "Format Markdown"
+            name: "Format YAML & Markdown"
             tags: ["md"]
     - repo: "https://github.com/doublify/pre-commit-clang-format.git"
       rev: "62302476d0da01515660132d76902359bed0f782"
