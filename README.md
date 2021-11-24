@@ -249,7 +249,7 @@ print(json)
 
 The [toml++](https://github.com/marzer/tomlplusplus/) license is available in the `tomlplusplus` directory in the `LICENSE` file.
 
-The [sol](https://github.com/ThePhD/sol2) license is available in the `sol2` directory in the `LICENSE.txt` file.
+The [sol2](https://github.com/ThePhD/sol2) license is available in the `sol2` directory in the `LICENSE.txt` file.
 
 ## Contributing
 
