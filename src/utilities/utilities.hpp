@@ -25,9 +25,37 @@ std::string parseErrorToString(toml::parse_error e);
 /// Inserts the values in `e` into `table`.
 void parseErrorToTable(toml::parse_error e, sol::table & table);
 
+toml::format_flags tableToFormatFlags(sol::optional<sol::table> t);
+
 /// `std::string` description of `sol::type`.
-std::string solLuaDataTypeToString(sol::type type);
+std::string solLuaDataTypeToString(sol::type type, bool withPrefix = true);
 
 std::optional<std::string> keyToString(sol::object key);
+
+/// Gets a string containing TOML from the first index in the Lua stack, and converts it to a
+/// `toml::table`, and returns that table.
+///
+/// If conversion fails, an error table is pushed to the stack, and an integer from `luaL_error` is
+/// returned.
+///
+/// If a string is not on the stack, then an integer from `luaL_argerror` is returned.
+std::variant<int, toml::table> getTableFromStringInState(sol::state_view state);
+
+/// @brief Gets a TOML string from the Lua stack, converts it to a `toml::table`, then converts that
+/// table to another format using `T`. The string returned by `T` is then returned.
+///
+/// @param T: `T` should conform to `toml::impl::formatter`.
+template <class T> inline int tomlTo(sol::state_view state, toml::format_flags flags) {
+	auto L = state.lua_state();
+	auto res = getTableFromStringInState(state);
+
+	try {
+		auto table = std::get<toml::table>(res);
+		std::stringstream ss;
+
+		ss << T(table, flags);
+		return sol::stack::push(L, ss.str());
+	} catch (std::bad_variant_access) { return std::get<int>(res); }
+}
 
 #endif /* UTILITIES_H */

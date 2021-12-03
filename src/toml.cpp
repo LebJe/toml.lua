@@ -4,6 +4,7 @@
 #include <encoding/encoding.hpp>
 #include <exception>
 #include <iostream>
+#include <optional>
 #include <sol/sol.hpp>
 #include <string>
 #include <toml.hpp>
@@ -18,24 +19,26 @@ extern "C" {
 		sol::table table;
 
 		sol::stack::check<sol::table>(
-			L, -1, [](lua_State * s, int, sol::type, sol::type, const char * = nullptr) {
+			L, 1, [](lua_State * s, int, sol::type, sol::type, const char * = nullptr) {
 				return luaL_argerror(
 					s, 1, "A Lua table with strings as keys should be the first and only argument");
 			});
-		table = sol::stack::pop<sol::table>(L);
-		;
+		table = sol::stack::get<sol::table>(L, 1);
+
+		auto flags = tableToFormatFlags(sol::stack::check_get<sol::table>(L, 2));
 
 		toml::table tomlTable;
 
 		try {
 			tomlTable = tomlTableFromLuaTable(table);
 		} catch (std::exception & e) {
-			luaL_error(L, (std::string("An error occurred during encoding: ") + e.what()).c_str());
+			return luaL_error(
+				L, (std::string("An error occurred during encoding: ") + e.what()).c_str());
 		}
 
 		std::stringstream ss;
 
-		ss << toml::default_formatter(tomlTable);
+		ss << toml::toml_formatter(tomlTable, flags);
 
 		return sol::stack::push(L, ss.str());
 
@@ -44,35 +47,18 @@ extern "C" {
 
 	int decode(lua_State * L) {
 		sol::state_view state(L);
+		auto res = getTableFromStringInState(state);
 
 		try {
+			try {
+				auto tomlTable = std::get<toml::table>(res);
 
-			sol::stack::check<std::string>(
-				L, -1, [](lua_State * s, int, sol::type, sol::type, const char * = nullptr) {
-					return luaL_argerror(
-						s, 1,
-						"A string containing a TOML document should be the first and only "
-						"argument");
-				});
-			std::string document = sol::stack::pop<std::string>(L);
+				auto luaTable = state.create_table();
 
-			auto res = toml::parse(document);
+				tomlToLuaTable(tomlTable, luaTable);
 
-			auto table = state.create_table();
-
-			tomlToLuaTable(res, table);
-
-			return table.push();
-
-		} catch (toml::parse_error & e) {
-			auto source = e.source();
-
-			auto table = state.create_table();
-
-			parseErrorToTable(e, table);
-
-			sol::stack::push(L, table);
-			return lua_error(L);
+				return luaTable.push();
+			} catch (std::bad_variant_access) { return std::get<int>(res); }
 		} catch (std::exception & e) {
 			return luaL_error(
 				L, (std::string("An error occurred during decoding: ") + e.what()).c_str());
@@ -80,39 +66,13 @@ extern "C" {
 	}
 
 	int tomlToJSON(lua_State * L) {
-		sol::state_view state(L);
+		auto flags = tableToFormatFlags(sol::stack::check_get<sol::table>(L, 2));
+		return tomlTo<toml::json_formatter>(sol::state_view(L), flags);
+	}
 
-		try {
-			sol::stack::check<std::string>(
-				L, -1, [](lua_State * s, int, sol::type, sol::type, const char * = nullptr) {
-					return luaL_argerror(
-						s, 1,
-						"A string containing a TOML document should be the first and only "
-						"argument");
-				});
-
-			std::string document = sol::stack::pop<std::string>(L);
-
-			auto res = toml::parse(document);
-
-			std::stringstream ss;
-
-			ss << toml::json_formatter(res);
-			return sol::stack::push(L, ss.str());
-
-		} catch (toml::parse_error & e) {
-			auto source = e.source();
-
-			auto table = state.create_table();
-
-			parseErrorToTable(e, table);
-
-			sol::stack::push(L, table);
-			return lua_error(L);
-		} catch (std::exception & e) {
-			return luaL_error(
-				L, (std::string("An error occurred during conversion: ") + e.what()).c_str());
-		}
+	int tomlToYAML(lua_State * L) {
+		auto flags = tableToFormatFlags(sol::stack::check_get<sol::table>(L, 2));
+		return tomlTo<toml::yaml_formatter>(sol::state_view(L), flags);
 	}
 
 #ifdef __cplusplus
@@ -128,6 +88,7 @@ extern "C" __attribute__((visibility("default"))) int luaopen_toml(lua_State * L
 	module["encode"] = &encode;
 	module["decode"] = &decode;
 	module["tomlToJSON"] = &tomlToJSON;
+	module["tomlToYAML"] = &tomlToYAML;
 
 	// Setup UserType - Date
 

@@ -1,6 +1,8 @@
 #include "encoding.hpp"
 #include "sol/sol.hpp"
 #include "utilities/utilities.hpp"
+#include <cassert>
+#include <iostream>
 
 void * luaValueToTomlNode(sol::object & luaValue) {
 	switch (luaValue.get_type()) {
@@ -110,7 +112,7 @@ toml::table tomlTableFromLuaTable(sol::table luaTable) {
 			auto k = keyToString(key);
 			throw sol::error((k->empty() ? "The keys in a table"
 										 : std::string("The key ") + k.value() +
-											   " should be a string, not a " +
+											   " should be a string, not " +
 											   solLuaDataTypeToString(key.get_type()))
 								 .c_str());
 		}

@@ -197,9 +197,11 @@ else
 end
 ```
 
-### TOML To JSON
+### TOML Conversion
 
 ```lua
+local toml = require("toml")
+
 local tomlStr = [[
 a = 1275892
 b = 'Hello, World!'
@@ -212,33 +214,64 @@ g = 1979-05-27
 h = 07:32:00
 i = 1979-05-27T07:32:00-07:00
 ]]
-
-local toml = require("toml")
-local json = toml.tomlToJSON(tomlStr)
-
-print(json)
-
---[[
-{
-	"a" : 1275892,
-	"b" : "Hello, World!",
-	"c" : true,
-	"d" : 124.2548,
-	"e" : {
-		"f" : [
-			1,
-			2,
-			3,
-			"4",
-			5.142
-		],
-		"g" : "1979-05-27",
-		"h" : "07:32:00",
-		"i" : "1979-05-27T07:32:00-07:00"
-	}
-}
---]]
 ```
+
+#### JSON
+
+```lua
+local json = toml.tomlToJSON(tomlStr)
+print(json)
+```
+
+#### YAML
+
+```lua
+local ymal = toml.tomlToYAML(tomlStr)
+print(yaml)
+```
+
+### Output Formatting
+
+`toml.encode`, `toml.tomlToJSON`, and `toml.tomlToYAML` all take an optional second parameter: a table containing keys that disable or enable different formatting options.
+
+```lua
+{
+	--- Dates and times will be emitted as quoted strings.
+	quoteDatesAndTimes = true,
+
+	--- Infinities and NaNs will be emitted as quoted strings.
+	quoteInfinitesAndNaNs = false,
+
+	--- Strings will be emitted as single-quoted literal strings where possible.
+	allowLiteralStrings = false,
+
+	--- Strings containing newlines will be emitted as triple-quoted 'multi-line' strings where possible.
+	allowMultiLineStrings = false,
+
+	--- Allow real tab characters in string literals (as opposed to the escaped form `\t`).
+	allowRealTabsInStrings = false,
+
+	--- Allow integers with #value_flags::format_as_binary to be emitted as binary.
+	allowBinaryIntegers = true,
+
+	--- Allow integers with #value_flags::format_as_octal to be emitted as octal.
+	allowOctalIntegers = true,
+
+	--- Allow integers with #value_flags::format_as_hexadecimal to be emitted as hexadecimal.
+	allowHexadecimalIntegers = true,
+
+	--- Apply indentation to tables nested within other tables/arrays.
+	indentSubTables = true,
+
+	--- Apply indentation to array elements when the array is forced to wrap over multiple lines.
+	indentArrayElements = true,
+
+	--- Combination of `indentSubTables` and `indentArrayElements`.
+	indentation = true
+}
+```
+
+> The comments for the different options are from [the tomlplusplus documentation](https://marzer.github.io/tomlplusplus/namespacetoml.html#af1a6761a2f4d80b1a541ba819d9c8e0f)
 
 ## Dependencies
 

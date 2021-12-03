@@ -45,7 +45,6 @@ describe("toml.decode()", function()
 				line = 7,
 				column = 1,
 			},
-			formattedReason = "Error while parsing table header: cannot redefine existing table 'fruit' as array-of-tables (at line 7, column 1)",
 			reason = "Error while parsing table header: cannot redefine existing table 'fruit' as array-of-tables",
 		}
 
@@ -60,14 +59,13 @@ describe("toml.decode()", function()
 		local expectedError2 = {
 			begin = {
 				line = 10,
-				column = 1,
+				column = 7,
 			},
 			["end"] = {
 				line = 10,
-				column = 1,
+				column = 7,
 			},
-			formattedReason = "Error while parsing key-value pair: cannot redefine existing integer as dotted key-value pair (at line 10, column 1)",
-			reason = "Error while parsing key-value pair: cannot redefine existing integer as dotted key-value pair",
+			reason = "Error while parsing key-value pair: cannot redefine existing table as dotted key-value pair",
 		}
 
 		assert.has_error(function()

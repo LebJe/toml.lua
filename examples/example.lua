@@ -42,7 +42,10 @@ end
 
 print("\n\nEncoding:\n")
 
-print(toml.encode(data))
+print(toml.encode(data, { indentation = true }))
 
 print("\n\nTOML to JSON:\n")
-print(toml.tomlToJSON(tomlStr))
+print(toml.tomlToJSON(tomlStr, { indentation = true }))
+
+print("\n\nTOML to YAML:\n")
+print(toml.tomlToYAML(tomlStr, { indentation = true }))
