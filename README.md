@@ -294,7 +294,7 @@ The [toml++](https://github.com/marzer/tomlplusplus/) license is available in th
 
 The [sol2](https://github.com/ThePhD/sol2) license is available in the `sol2` directory in the `LICENSE.txt` file.
 
-The [magic_enum](https://github.com/Neargye/magic_enum) license is available in [it's repository](https://github.com/Neargye/magic_enum/blob/master/LICENSE).
+The [magic_enum](https://github.com/Neargye/magic_enum) license is available in [its repository](https://github.com/Neargye/magic_enum/blob/master/LICENSE).
 
 ## Contributing
 
