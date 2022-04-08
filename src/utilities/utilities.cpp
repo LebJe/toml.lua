@@ -1,4 +1,53 @@
 #include "utilities.hpp"
+#include "sol/sol.hpp"
+#include "toml.hpp"
+#include <iostream>
+#include <magicEnum/magic_enum.hpp>
+#include <map>
+
+using toml::format_flags;
+
+static std::map<format_flags, bool> defaultFlags = std::map<toml::format_flags, bool> {
+	{ format_flags::quote_dates_and_times, true },
+	{ format_flags::quote_infinities_and_nans, false },
+	{ format_flags::allow_literal_strings, false },
+	{ format_flags::allow_multi_line_strings, false },
+	{ format_flags::allow_real_tabs_in_strings, false },
+	{ format_flags::allow_unicode_strings, true },
+	{ format_flags::allow_binary_integers, true },
+	{ format_flags::allow_hexadecimal_integers, true },
+	{ format_flags::allow_octal_integers, true },
+	{ format_flags::indent_sub_tables, false },
+	{ format_flags::indentation, true },
+	{ format_flags::relaxed_float_precision, false },
+};
+
+// Based on https://codereview.stackexchange.com/a/263761
+std::string camelCase(std::string s) noexcept {
+	bool tail = false;
+	std::size_t n = 0;
+
+	for (unsigned char c : s) {
+		if (c == '-' || c == '_') {
+			tail = false;
+		} else if (tail) {
+			s[n++] = c;
+		} else {
+			tail = true;
+
+			if (/* Don't uppercase first letter */ n != 0) {
+				s[n++] = std::toupper(c);
+			} else {
+				s[n++] = c;
+			}
+		}
+	}
+
+	s.resize(n);
+	return s;
+}
+
+std::string camelCase(std::string_view s) noexcept { return camelCase(std::string(s)); }
 
 std::string sourcePositionToString(toml::source_position s) {
 	return "line " + std::to_string(s.line) + ", column " + std::to_string(s.column);
@@ -27,7 +76,50 @@ void parseErrorToTable(toml::parse_error e, sol::table & table) {
 	endTable["column"] = source.end.column;
 	table["begin"] = beginTable;
 	table["end"] = endTable;
-	table["formattedReason"] = parseErrorToString(e);
+}
+
+inline toml::format_flags defaultFormatFlags() {
+	auto flags = format_flags();
+
+	for (auto [flag, isAllowed] : defaultFlags) {
+		flags |= isAllowed ? flag : flags;
+	}
+
+	return flags;
+}
+
+void addFlag(toml::format_flags & flags, sol::table & flagsTable, toml::format_flags flagToAdd) {
+	auto tableFlag = flagsTable[camelCase(magic_enum::enum_name(flagToAdd))];
+
+	if (tableFlag.valid()) {
+		flags |= tableFlag.get<bool>() ? flagToAdd : flags;
+	} else {
+		// Use default
+		flags |= defaultFlags[flagToAdd] ? flagToAdd : flags;
+	};
+}
+
+toml::format_flags tableToFormatFlags(sol::optional<sol::table> t) {
+	auto flags = format_flags();
+
+	// Set default flags.
+	if (!t) {
+		flags = defaultFormatFlags();
+		return flags;
+	}
+
+	auto table = t.value();
+
+	// User passed an empty table to clear all flags.
+	if (table.empty()) return flags;
+
+	for (auto flag : magic_enum::enum_values<format_flags>()) {
+		addFlag(flags, table, flag);
+	}
+
+	// `format_flags::indentation` is not returned from `enum_values`.
+	addFlag(flags, table, format_flags::indentation);
+	return flags;
 }
 
 std::optional<std::string> keyToString(sol::object key) {
@@ -44,29 +136,62 @@ std::optional<std::string> keyToString(sol::object key) {
 	return std::optional<std::string>();
 }
 
-std::string solLuaDataTypeToString(sol::type type) {
+std::string solLuaDataTypeToString(sol::type type, bool withPrefix) {
 	switch (type) {
 		case sol::type::lightuserdata:
 			return "lightUserData";
 		case sol::type::userdata:
-			return "UserData";
+			return "userData";
 		case sol::type::boolean:
-			return "Boolean";
+			return std::string(withPrefix ? "a " : "") + "boolean";
 		case sol::type::function:
-			return "Function";
+			return std::string(withPrefix ? "a" : "") + "function";
 		case sol::type::lua_nil:
-			return "Nil";
+			return "nil";
 		case sol::type::none:
-			return "None";
+			return "none";
 		case sol::type::number:
-			return "Number";
+			return std::string(withPrefix ? "a " : "") + "number";
 		case sol::type::thread:
-			return "Thread";
+			return std::string(withPrefix ? "a " : "") + "thread";
 		case sol::type::table:
-			return "Table";
+			return std::string(withPrefix ? "a " : "") + "table";
 		case sol::type::poly:
-			return "Poly";
+			return "poly";
 		case sol::type::string:
-			return "String";
+			return std::string(withPrefix ? "a " : "") + "string";
+	}
+}
+
+std::variant<int, toml::table> getTableFromStringInState(sol::state_view state) {
+	try {
+		sol::stack::check<std::string>(
+			state.lua_state(), 1,
+			[](lua_State * s, int, sol::type, sol::type, const char * = nullptr) {
+				return luaL_argerror(
+					s, 1,
+					"A string containing a TOML document should be the first and only "
+					"argument");
+			});
+
+		std::string document = sol::stack::get<std::string>(state.lua_state(), 1);
+
+		auto res = toml::parse(document);
+
+		return res;
+
+	} catch (toml::parse_error & e) {
+		auto source = e.source();
+
+		auto table = state.create_table();
+
+		parseErrorToTable(e, table);
+
+		sol::stack::push(state.lua_state(), table);
+		return lua_error(state.lua_state());
+	} catch (std::exception & e) {
+		return luaL_error(
+			state.lua_state(),
+			(std::string("An error occurred during conversion: ") + e.what()).c_str());
 	}
 }

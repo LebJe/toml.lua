@@ -11,7 +11,7 @@ repos:
       rev: "62302476d0da01515660132d76902359bed0f782"
       hooks:
           - id: "clang-format"
-            exclude: "sol2/|src/toml.hpp|src/sol/"
+            exclude: "sol2/tomlplusplus/|src/include"
     - repo: "https://github.com/LebJe/PreCommitStyLua.git"
       rev: "c7f96e8ba459f1c6c27cb21cc6a9dc05e14745ca"
       hooks:

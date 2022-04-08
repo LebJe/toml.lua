@@ -7,7 +7,7 @@ describe("toml.encode()", function()
 		local expectedTOML = fh:read("*all")
 		fh:close()
 
-		assert.are.same(toml.encode(data.tableForTestToml), expectedTOML)
+		assert.are.same(toml.encode(data.tableForTestToml, {}), expectedTOML)
 	end)
 
 	it("can encode another sample TOML document", function()
@@ -15,11 +15,11 @@ describe("toml.encode()", function()
 		local expectedTOML = fh:read("*all")
 		fh:close()
 
-		assert.are.same(toml.encode(data.tableForTest2Toml), expectedTOML)
+		assert.are.same(toml.encode(data.tableForTest2Toml, {}), expectedTOML)
 	end)
 
 	it("can encode massive table", function()
-		local returnedTOML = toml.encode(data.tableForMassiveToml)
+		local returnedTOML = toml.encode(data.tableForMassiveToml, {})
 
 		local fh = io.open("spec/test-data/massive.toml")
 		local expectedTOML = fh:read("*all")

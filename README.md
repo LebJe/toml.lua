@@ -20,12 +20,15 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
         -   [Decoding](#decoding)
         -   [Encoding](#encoding)
         -   [Error Handling](#error-handling)
-        -   [TOML To JSON](#toml-to-json)
+        -   [TOML Conversion](#toml-conversion)
+            -   [JSON](#json)
+            -   [YAML](#yaml)
+        -   [Output Formatting](#output-formatting)
     -   [Dependencies](#dependencies)
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Wed Nov 24 13:59:16 EST 2021 -->
+<!-- Added by: lebje, at: Thu Dec  2 22:19:10 EST 2021 -->
 
 <!--te-->
 
@@ -48,10 +51,10 @@ luarocks install toml
 
 ### Manual Compilation
 
-1. Run `cmake -H. -Bbuild -G<generator-name>` to generate the required files.
+1. Run `cmake -S . -B build -G <generator-name>` to generate the required files.
 
 > If you have a non standard Lua install location, add the environment variable `LUA_DIR` and have it point to the directory containing the `include` and `lib` folders for your Lua installation. For example:
-> `LUA_DIR=/usr/local/openresty/luajit cmake -H. -Bbuild -G<generator-name>`
+> `LUA_DIR=/usr/local/openresty/luajit cmake -S . -B build -G <generator-name>`
 
 2. Run `cmake --build build --config Release` to build the project.
 3. You will find the `toml.so` (or `toml.dll`) dynamic library in the `build` folder.
@@ -190,16 +193,17 @@ else
 			column = 9,
 			line = 4
 		},
-		formattedReason = "Error while parsing floating-point: expected decimal digit, saw '\\n' (at line 4, column 9)",
 		reason = "Error while parsing floating-point: expected decimal digit, saw '\\n'"
 	}
 --]]
 end
 ```
 
-### TOML To JSON
+### TOML Conversion
 
 ```lua
+local toml = require("toml")
+
 local tomlStr = [[
 a = 1275892
 b = 'Hello, World!'
@@ -212,44 +216,85 @@ g = 1979-05-27
 h = 07:32:00
 i = 1979-05-27T07:32:00-07:00
 ]]
-
-local toml = require("toml")
-local json = toml.tomlToJSON(tomlStr)
-
-print(json)
-
---[[
-{
-	"a" : 1275892,
-	"b" : "Hello, World!",
-	"c" : true,
-	"d" : 124.2548,
-	"e" : {
-		"f" : [
-			1,
-			2,
-			3,
-			"4",
-			5.142
-		],
-		"g" : "1979-05-27",
-		"h" : "07:32:00",
-		"i" : "1979-05-27T07:32:00-07:00"
-	}
-}
---]]
 ```
+
+#### JSON
+
+```lua
+local json = toml.tomlToJSON(tomlStr)
+print(json)
+```
+
+#### YAML
+
+```lua
+local yaml = toml.tomlToYAML(tomlStr)
+print(yaml)
+```
+
+### Output Formatting
+
+`toml.encode`, `toml.tomlToJSON`, and `toml.tomlToYAML` all take an optional second parameter: a table containing keys that disable or enable different formatting options.
+Passing an empty table removes all options, while not providing a table will use the default options.
+
+```lua
+{
+	--- Dates and times will be emitted as quoted strings.
+	quoteDatesAndTimes = true,
+
+	--- Infinities and NaNs will be emitted as quoted strings.
+	quoteInfinitesAndNaNs = false,
+
+	--- Strings will be emitted as single-quoted literal strings where possible.
+	allowLiteralStrings = false,
+
+	--- Strings containing newlines will be emitted as triple-quoted 'multi-line' strings where possible.
+	allowMultiLineStrings = false,
+
+	--- Allow real tab characters in string literals (as opposed to the escaped form `\t`).
+	allowRealTabsInStrings = false,
+
+	--- Allow non-ASCII characters in strings (as opposed to their escaped form, e.g. `\u00DA`).
+	allow_unicode_strings = true,
+
+	--- Allow integers with #value_flags::format_as_binary to be emitted as binary.
+	allowBinaryIntegers = true,
+
+	--- Allow integers with #value_flags::format_as_octal to be emitted as octal.
+	allowOctalIntegers = true,
+
+	--- Allow integers with #value_flags::format_as_hexadecimal to be emitted as hexadecimal.
+	allowHexadecimalIntegers = true,
+
+	--- Apply indentation to tables nested within other tables/arrays.
+	indentSubTables = true,
+
+	--- Apply indentation to array elements when the array is forced to wrap over multiple lines.
+	indentArrayElements = true,
+
+	--- Combination of `indentSubTables` and `indentArrayElements`.
+	indentation = true,
+
+	--- Emit floating-point values with relaxed (human-friendly) precision.
+	relaxedFloatPrecision = false
+}
+```
+
+> The comments for the options are from [the tomlplusplus documentation](https://marzer.github.io/tomlplusplus/namespacetoml.html#a2102aa80bc57783d96180f36e1f64f6a)
 
 ## Dependencies
 
 -   [toml++](https://github.com/marzer/tomlplusplus/)
 -   [sol2](https://github.com/ThePhD/sol2)
+-   [magic_enum](https://github.com/Neargye/magic_enum)
 
 ## Licenses
 
 The [toml++](https://github.com/marzer/tomlplusplus/) license is available in the `tomlplusplus` directory in the `LICENSE` file.
 
 The [sol2](https://github.com/ThePhD/sol2) license is available in the `sol2` directory in the `LICENSE.txt` file.
+
+The [magic_enum](https://github.com/Neargye/magic_enum) license is available in [its repository](https://github.com/Neargye/magic_enum/blob/master/LICENSE).
 
 ## Contributing
 
