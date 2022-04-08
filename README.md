@@ -280,7 +280,7 @@ Passing an empty table removes all options, while not providing a table will use
 }
 ```
 
-> The comments for the different options are from [the tomlplusplus documentation](https://marzer.github.io/tomlplusplus/namespacetoml.html#af1a6761a2f4d80b1a541ba819d9c8e0f)
+> The comments for the options are from [the tomlplusplus documentation](https://marzer.github.io/tomlplusplus/namespacetoml.html#a2102aa80bc57783d96180f36e1f64f6a)
 
 ## Dependencies
 
