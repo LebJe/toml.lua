@@ -1,6 +1,7 @@
 [submodule "tomlplusplus"]
 	path = tomlplusplus
 	url = https://github.com/marzer/tomlplusplus
+	fetchRecurseSubmodules = false
 [submodule "sol2"]
 	path = sol2
 	url = https://github.com/ThePhD/sol2

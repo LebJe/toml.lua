@@ -1,7 +1,7 @@
 title = "TOML Example"
 
 [database]
-data = [ [ "delta", "phi" ], [ 3.14 ] ]
+data = [ [ "delta", "phi" ], [ 3.1400000000000001 ] ]
 enabled = 1
 ports = [ 8000, 8001, 8002 ]
 

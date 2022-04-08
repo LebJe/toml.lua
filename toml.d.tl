@@ -7,18 +7,19 @@ local record toml
 
 	--- Encodes a Lua table into a TOML document.
 	--- @param data table: The Lua table to be encoded.
+	--- @param options FormattingOptions: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The encoded TOML document.
 	encode: function(data: { string: any }, options: FormattingOptions): string
 	
 	--- Converts a TOML document into a JSON document.
 	--- @param tomlStr string: The string containing a TOML document.
-	--- @param options FormattingOptions: Options for formatting the YAML document.
+	--- @param options FormattingOptions: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The converted JSON document.
 	tomlToJSON: function(tomlStr: string, options: FormattingOptions): string
 	
 	--- Converts a TOML document into a YAML document.
 	--- @param tomlStr string: The string containing a TOML document.
-	--- @param options FormattingOptions: Options for formatting the YAML document.
+	--- @param options FormattingOptions: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The converted YAML document.
 	tomlToYAML: function(tomlStr: string, options: FormattingOptions): string
 	
@@ -79,13 +80,13 @@ local record toml
 		--- Allow real tab characters in string literals (as opposed to the escaped form `\t`).
 		allowRealTabsInStrings: boolean
 
-		--- Allow integers with #value_flags::format_as_binary to be emitted as binary.
+		--- Allow integers with formatAsBinary to be emitted as binary.
 		allowBinaryIntegers: boolean
 
-		--- Allow integers with #value_flags::format_as_octal to be emitted as octal.
+		--- Allow integers with formatAsOctal to be emitted as octal.
 		allowOctalIntegers: boolean
 
-		--- Allow integers with #value_flags::format_as_hexadecimal to be emitted as hexadecimal.
+		--- Allow integers with formatAsHexadecimal to be emitted as hexadecimal.
 		allowHexadecimalIntegers: boolean
 
 		--- Apply indentation to tables nested within other tables/arrays.

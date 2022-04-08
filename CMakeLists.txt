@@ -26,7 +26,7 @@ project(toml.lua VERSION ${TOML_LUA_VERSION})
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# compile in release  mode by default
+# compile in release mode by default
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
@@ -59,7 +59,7 @@ if(NOT LUA_INCLUDE_DIR OR (WIN32 AND NOT LUA_LIBRARIES))
     find_package(Lua REQUIRED)
 endif()
 
-include_directories(${LUA_INCLUDE_DIR} src)
+include_directories(${LUA_INCLUDE_DIR} src src/include)
 
 set(SOURCES
     src/toml.cpp

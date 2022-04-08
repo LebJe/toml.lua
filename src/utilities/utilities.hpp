@@ -7,6 +7,11 @@
 #include <string>
 #include <toml.hpp>
 
+// Based on https://codereview.stackexchange.com/a/263761
+std::string camelCase(std::string s) noexcept;
+
+std::string camelCase(std::string_view s) noexcept;
+
 /// Converts `toml::source_position` into a formatted `std::string`.
 ///
 /// Example: "line 194, column 17"

@@ -1,6 +1,6 @@
 //----------------------------------------------------------------------------------------------------------------------
 //
-// toml++ v3.0.0
+// toml++ v3.0.1
 // https://github.com/marzer/tomlplusplus
 // SPDX-License-Identifier: MIT
 //
@@ -116,8 +116,17 @@
 		#define TOML_DISABLE_SPAM_WARNINGS_CLANG_10 static_assert(true)
 	#endif
 
+	#if TOML_CLANG >= 11
+		#define TOML_DISABLE_SPAM_WARNINGS_CLANG_11 \
+			_Pragma("clang diagnostic ignored \"-Wsuggest-destructor-override\"") \
+			static_assert(true)
+	#else
+		#define TOML_DISABLE_SPAM_WARNINGS_CLANG_11 static_assert(true)
+	#endif
+
 	#define TOML_DISABLE_SPAM_WARNINGS \
 		TOML_DISABLE_SPAM_WARNINGS_CLANG_10; \
+		TOML_DISABLE_SPAM_WARNINGS_CLANG_11; \
 		_Pragma("clang diagnostic ignored \"-Wweak-vtables\"")	\
 		_Pragma("clang diagnostic ignored \"-Wweak-template-vtables\"") \
 		_Pragma("clang diagnostic ignored \"-Wdouble-promotion\"") \
@@ -137,7 +146,7 @@
 
 	#define TOML_ENABLE_WARNINGS				TOML_POP_WARNINGS
 
-	#define TOML_ASSUME(cond)					__builtin_assume(cond)
+	#define TOML_ASSUME(expr)					__builtin_assume(expr)
 	#define TOML_UNREACHABLE					__builtin_unreachable()
 	#define TOML_ATTR(...)						__attribute__((__VA_ARGS__))
 	#if defined(_MSC_VER) // msvc compat mode
@@ -267,7 +276,7 @@
 		#define TOML_ALWAYS_INLINE				__forceinline
 	#endif
 	#define TOML_NEVER_INLINE					__declspec(noinline)
-	#define TOML_ASSUME(cond)					__assume(cond)
+	#define TOML_ASSUME(expr)					__assume(expr)
 	#define TOML_UNREACHABLE					__assume(0)
 	#define TOML_ABSTRACT_BASE					__declspec(novtable)
 	#define TOML_EMPTY_BASES					__declspec(empty_bases)
@@ -369,8 +378,22 @@
 
 #endif
 
+#ifndef TOML_CPP_VERSION
+	#define TOML_CPP_VERSION __cplusplus
+#endif
+#if TOML_CPP_VERSION < 201103L
+	#error toml++ requires C++17 or higher. For a TOML library supporting pre-C++11 see https://github.com/ToruNiina/Boost.toml
+#elif TOML_CPP_VERSION < 201703L
+	#error toml++ requires C++17 or higher. For a TOML library supporting C++11 see https://github.com/ToruNiina/toml11
+#endif
+
 #ifdef TOML_CONFIG_HEADER
 	#include TOML_CONFIG_HEADER
+#endif
+
+// is the library being built as a shared lib/dll using meson and friends?
+#ifndef TOML_SHARED_LIB
+	#define TOML_SHARED_LIB 0
 #endif
 
 // header-only mode
@@ -381,18 +404,9 @@
 	#undef TOML_HEADER_ONLY
 	#define TOML_HEADER_ONLY 1
 #endif
-#ifdef DOXYGEN
+#if defined(DOXYGEN) || TOML_SHARED_LIB
 	#undef TOML_HEADER_ONLY
 	#define TOML_HEADER_ONLY 0
-#endif
-
-// extern templates (for !TOML_HEADER_ONLY)
-#ifndef TOML_EXTERN_TEMPLATES
-	#define TOML_EXTERN_TEMPLATES 1
-#endif
-#if (defined(DOXYGEN) || TOML_HEADER_ONLY)
-	#undef TOML_EXTERN_TEMPLATES
-	#define TOML_EXTERN_TEMPLATES 0
 #endif
 
 // internal implementation switch
@@ -403,9 +417,49 @@
 	#define TOML_IMPLEMENTATION 0
 #endif
 
-// dllexport etc
-#ifndef TOML_API
-	#define TOML_API
+// dll/shared lib function exports (legacy - TOML_API was the old name for this setting)
+#if !defined(TOML_EXPORTED_MEMBER_FUNCTION)		   \
+		&& !defined(TOML_EXPORTED_STATIC_FUNCTION) \
+		&& !defined(TOML_EXPORTED_FREE_FUNCTION)   \
+		&& defined(TOML_API)
+	#define TOML_EXPORTED_MEMBER_FUNCTION	TOML_API
+	#define TOML_EXPORTED_STATIC_FUNCTION	TOML_API
+	#define TOML_EXPORTED_FREE_FUNCTION		TOML_API
+#endif
+
+// dll/shared lib exports
+#if TOML_SHARED_LIB
+	#undef TOML_API
+	#undef TOML_EXPORTED_CLASS
+	#undef TOML_EXPORTED_MEMBER_FUNCTION
+	#undef TOML_EXPORTED_STATIC_FUNCTION
+	#undef TOML_EXPORTED_FREE_FUNCTION
+	#if defined(_WIN32) || defined(__CYGWIN__)
+		#if TOML_IMPLEMENTATION
+			#define TOML_EXPORTED_CLASS			__declspec(dllexport)
+			#define TOML_EXPORTED_FREE_FUNCTION	__declspec(dllexport)
+		#else
+			#define TOML_EXPORTED_CLASS			__declspec(dllimport)
+			#define TOML_EXPORTED_FREE_FUNCTION	__declspec(dllimport)
+		#endif
+	#elif defined(__GNUC__) && __GNUC__ >= 4
+		#define TOML_EXPORTED_CLASS				__attribute__((visibility("default")))
+		#define TOML_EXPORTED_MEMBER_FUNCTION	__attribute__((visibility("default")))
+		#define TOML_EXPORTED_STATIC_FUNCTION	__attribute__((visibility("default")))
+		#define TOML_EXPORTED_FREE_FUNCTION		__attribute__((visibility("default")))
+	#endif
+#endif
+#ifndef TOML_EXPORTED_CLASS
+	#define TOML_EXPORTED_CLASS
+#endif
+#ifndef TOML_EXPORTED_MEMBER_FUNCTION
+	#define TOML_EXPORTED_MEMBER_FUNCTION
+#endif
+#ifndef TOML_EXPORTED_STATIC_FUNCTION
+	#define TOML_EXPORTED_STATIC_FUNCTION
+#endif
+#ifndef TOML_EXPORTED_FREE_FUNCTION
+	#define TOML_EXPORTED_FREE_FUNCTION
 #endif
 
 // experimental language features
@@ -472,6 +526,29 @@
 	#define TOML_HAS_CUSTOM_OPTIONAL_TYPE 0
 #endif
 
+// exceptions (compiler support)
+#ifndef TOML_COMPILER_EXCEPTIONS
+	#if defined(__EXCEPTIONS) || defined(__cpp_exceptions)
+		#define TOML_COMPILER_EXCEPTIONS 1
+	#else
+		#define TOML_COMPILER_EXCEPTIONS 0
+	#endif
+#endif
+
+// exceptions (library use)
+#if TOML_COMPILER_EXCEPTIONS
+	#if !defined(TOML_EXCEPTIONS) || (defined(TOML_EXCEPTIONS) && TOML_EXCEPTIONS)
+		#undef TOML_EXCEPTIONS
+		#define TOML_EXCEPTIONS 1
+	#endif
+#else
+	#if defined(TOML_EXCEPTIONS) && TOML_EXCEPTIONS
+		#error TOML_EXCEPTIONS was explicitly enabled but exceptions are disabled/unsupported by the compiler.
+	#endif
+	#undef TOML_EXCEPTIONS
+	#define TOML_EXCEPTIONS	0
+#endif
+
 #ifndef TOML_UNDEF_MACROS
 	#define TOML_UNDEF_MACROS 1
 #endif
@@ -494,50 +571,12 @@
 	#endif
 #endif
 
-#ifndef TOML_CPP_VERSION
-	#define TOML_CPP_VERSION __cplusplus
-#endif
-#if TOML_CPP_VERSION < 201103L
-	#error toml++ requires C++17 or higher. For a TOML library supporting pre-C++11 see https://github.com/ToruNiina/Boost.toml
-#elif TOML_CPP_VERSION < 201703L
-	#error toml++ requires C++17 or higher. For a TOML library supporting C++11 see https://github.com/ToruNiina/toml11
-#elif TOML_CPP_VERSION >= 202600L
-	#define TOML_CPP 26
-#elif TOML_CPP_VERSION >= 202300L
-	#define TOML_CPP 23
-#elif TOML_CPP_VERSION >= 202002L
-	#define TOML_CPP 20
-#elif TOML_CPP_VERSION >= 201703L
-	#define TOML_CPP 17
-#endif
-#undef TOML_CPP_VERSION
-
-#ifndef TOML_COMPILER_EXCEPTIONS
-	#if defined(__EXCEPTIONS) || defined(__cpp_exceptions)
-		#define TOML_COMPILER_EXCEPTIONS 1
-	#else
-		#define TOML_COMPILER_EXCEPTIONS 0
-	#endif
-#endif
-#if TOML_COMPILER_EXCEPTIONS
-	#if !defined(TOML_EXCEPTIONS) || (defined(TOML_EXCEPTIONS) && TOML_EXCEPTIONS)
-		#undef TOML_EXCEPTIONS
-		#define TOML_EXCEPTIONS 1
-	#endif
-#else
-	#if defined(TOML_EXCEPTIONS) && TOML_EXCEPTIONS
-		#error TOML_EXCEPTIONS was explicitly enabled but exceptions are disabled/unsupported by the compiler.
-	#endif
-	#undef TOML_EXCEPTIONS
-	#define TOML_EXCEPTIONS	0
-#endif
-
-#if TOML_GCC || TOML_CLANG || (TOML_ICC && !TOML_ICC_CL)
+#if !defined(TOML_FLOAT_CHARCONV) && (TOML_GCC || TOML_CLANG || (TOML_ICC && !TOML_ICC_CL))
 	// not supported by any version of GCC or Clang as of 26/11/2020
 	// not supported by any version of ICC on Linux as of 11/01/2021
 	#define TOML_FLOAT_CHARCONV 0
 #endif
-#if defined(__EMSCRIPTEN__) || defined(__APPLE__)
+#if !defined(TOML_INT_CHARCONV) && (defined(__EMSCRIPTEN__) || defined(__APPLE__))
 	// causes link errors on emscripten
 	// causes Mac OS SDK version errors on some versions of Apple Clang
 	#define TOML_INT_CHARCONV 0
@@ -603,11 +642,11 @@
 #endif
 
 #ifndef TOML_ASSUME
-	#define TOML_ASSUME(cond)	(void)0
+	#define TOML_ASSUME(expr)	static_assert(true)
 #endif
 
 #ifndef TOML_UNREACHABLE
-	#define TOML_UNREACHABLE	TOML_ASSERT(false)
+	#define TOML_UNREACHABLE	TOML_ASSUME(false)
 #endif
 
 #ifndef TOML_FLAGS_ENUM
@@ -636,18 +675,34 @@
 	#define TOML_HAS_ATTR(...)	0
 #endif
 
-#if !defined(TOML_LIKELY) && TOML_HAS_ATTR(likely) >= 201803
-	#define TOML_LIKELY(...)	(__VA_ARGS__) [[likely]]
+#if TOML_HAS_ATTR(likely) >= 201803
+	#ifndef TOML_LIKELY
+		#define TOML_LIKELY(...)	(__VA_ARGS__) [[likely]]
+	#endif
+	#ifndef TOML_LIKELY_CASE
+		#define TOML_LIKELY_CASE	[[likely]]
+	#endif
 #endif
 #ifndef TOML_LIKELY
 	#define TOML_LIKELY(...)	(__VA_ARGS__)
 #endif
+#ifndef TOML_LIKELY_CASE
+	#define TOML_LIKELY_CASE
+#endif
 
-#if !defined(TOML_UNLIKELY) && TOML_HAS_ATTR(unlikely) >= 201803
-	#define TOML_UNLIKELY(...)	(__VA_ARGS__) [[unlikely]]
+#if TOML_HAS_ATTR(unlikely) >= 201803
+	#ifndef TOML_UNLIKELY
+		#define TOML_UNLIKELY(...)	(__VA_ARGS__) [[unlikely]]
+	#endif
+	#ifndef TOML_UNLIKELY_CASE
+		#define TOML_UNLIKELY_CASE	[[unlikely]]
+	#endif
 #endif
 #ifndef TOML_UNLIKELY
 	#define TOML_UNLIKELY(...)	(__VA_ARGS__)
+#endif
+#ifndef TOML_UNLIKELY_CASE
+	#define TOML_UNLIKELY_CASE
 #endif
 
 #if TOML_HAS_ATTR(nodiscard)
@@ -690,9 +745,7 @@
 #endif
 
 #define TOML_MAKE_FLAGS_(name, op)																	\
-	TOML_NODISCARD																					\
-	TOML_ALWAYS_INLINE																				\
-	TOML_ATTR(const)																				\
+	TOML_CONST_INLINE_GETTER																		\
 	constexpr name operator op(name lhs, name rhs) noexcept											\
 	{																								\
 		using under = std::underlying_type_t<name>;													\
@@ -708,17 +761,13 @@
 	TOML_MAKE_FLAGS_(name, &);																		\
 	TOML_MAKE_FLAGS_(name, |);																		\
 	TOML_MAKE_FLAGS_(name, ^);																		\
-	TOML_NODISCARD																					\
-	TOML_ALWAYS_INLINE																				\
-	TOML_ATTR(const)																				\
+	TOML_CONST_INLINE_GETTER																		\
 	constexpr name operator~(name val) noexcept														\
 	{																								\
 		using under = std::underlying_type_t<name>;													\
 		return static_cast<name>(~static_cast<under>(val));											\
 	}																								\
-	TOML_NODISCARD																					\
-	TOML_ALWAYS_INLINE																				\
-	TOML_ATTR(const)																				\
+	TOML_CONST_INLINE_GETTER																		\
 	constexpr bool operator!(name val) noexcept														\
 	{																								\
 		using under = std::underlying_type_t<name>;													\
@@ -734,17 +783,6 @@
 	#define POXY_IMPLEMENTATION_DETAIL(...) __VA_ARGS__
 #endif
 
-#if TOML_IMPLEMENTATION
-	#define TOML_EXTERN
-#else
-	#define TOML_EXTERN extern
-#endif
-#if TOML_CLANG
-	#define TOML_EXTERN_NOEXCEPT(...)
-#else
-	#define TOML_EXTERN_NOEXCEPT(...) noexcept(__VA_ARGS__)
-#endif
-
 #ifdef NDEBUG
 	#define TOML_PURE_GETTER			TOML_NODISCARD						TOML_ATTR(pure)
 	#define TOML_CONST_GETTER			TOML_NODISCARD						TOML_ATTR(const)
@@ -756,6 +794,14 @@
 	#define TOML_PURE_INLINE_GETTER		TOML_NODISCARD	TOML_ALWAYS_INLINE
 	#define TOML_CONST_INLINE_GETTER	TOML_NODISCARD	TOML_ALWAYS_INLINE
 #endif
+
+#define TOML_UNUSED(...) static_cast<void>(__VA_ARGS__)
+
+#define TOML_DELETE_DEFAULTS(T)                                                                                        \
+	T(const T&) = delete;                                                                                              \
+	T(T&&)		= delete;                                                                                              \
+	T& operator=(const T&) = delete;                                                                                   \
+	T& operator=(T&&) = delete
 
 // SFINAE
 #if defined(__cpp_concepts) && __cpp_concepts >= 201907
@@ -798,7 +844,7 @@
 
 #define TOML_LIB_MAJOR 3
 #define TOML_LIB_MINOR 0
-#define TOML_LIB_PATCH 0
+#define TOML_LIB_PATCH 1
 
 #define TOML_LANG_MAJOR 1
 #define TOML_LANG_MINOR 0
@@ -806,24 +852,24 @@
 
 #define	TOML_LIB_SINGLE_HEADER 1
 
-#define TOML_MAKE_VERSION(maj, min, rev)											\
-		((maj) * 1000 + (min) * 25 + (rev))
+#define TOML_MAKE_VERSION(major, minor, patch)											\
+		((major) * 10000 + (minor) * 100 + (patch))
 
 #if TOML_ENABLE_UNRELEASED_FEATURES
-	#define TOML_LANG_EFFECTIVE_VERSION												\
+	#define TOML_LANG_EFFECTIVE_VERSION													\
 		TOML_MAKE_VERSION(TOML_LANG_MAJOR, TOML_LANG_MINOR, TOML_LANG_PATCH+1)
 #else
-	#define TOML_LANG_EFFECTIVE_VERSION												\
+	#define TOML_LANG_EFFECTIVE_VERSION													\
 		TOML_MAKE_VERSION(TOML_LANG_MAJOR, TOML_LANG_MINOR, TOML_LANG_PATCH)
 #endif
 
-#define TOML_LANG_HIGHER_THAN(maj, min, rev)										\
-		(TOML_LANG_EFFECTIVE_VERSION > TOML_MAKE_VERSION(maj, min, rev))
+#define TOML_LANG_HIGHER_THAN(major, minor, patch)										\
+		(TOML_LANG_EFFECTIVE_VERSION > TOML_MAKE_VERSION(major, minor, patch))
 
-#define TOML_LANG_AT_LEAST(maj, min, rev)											\
-		(TOML_LANG_EFFECTIVE_VERSION >= TOML_MAKE_VERSION(maj, min, rev))
+#define TOML_LANG_AT_LEAST(major, minor, patch)											\
+		(TOML_LANG_EFFECTIVE_VERSION >= TOML_MAKE_VERSION(major, minor, patch))
 
-#define TOML_LANG_UNRELEASED														\
+#define TOML_LANG_UNRELEASED															\
 		TOML_LANG_HIGHER_THAN(TOML_LANG_MAJOR, TOML_LANG_MINOR, TOML_LANG_PATCH)
 
 #ifndef TOML_ABI_NAMESPACES
@@ -866,18 +912,23 @@
 	#define TOML_INTERNAL_LINKAGE				static
 #endif
 
-TOML_DISABLE_WARNINGS;
-#ifndef TOML_ASSERT
-	#ifdef NDEBUG
-		#define TOML_ASSERT(expr)	static_cast<void>(0)
-	#else
-		#ifndef assert
-			#include <cassert>
-		#endif
-		#define TOML_ASSERT(expr)	assert(expr)
-	#endif
+#ifdef NDEBUG
+	#undef TOML_ASSERT
+	#define TOML_ASSERT(expr)	static_assert(true)
 #endif
-TOML_ENABLE_WARNINGS;
+#ifndef TOML_ASSERT
+	#ifndef assert
+		TOML_DISABLE_WARNINGS;
+		#include <cassert>
+		TOML_ENABLE_WARNINGS;
+	#endif
+	#define TOML_ASSERT(expr)	assert(expr)
+#endif
+#ifdef NDEBUG
+	#define TOML_ASSERT_ASSUME(expr)	TOML_ASSUME(expr)
+#else
+	#define TOML_ASSERT_ASSUME(expr)	TOML_ASSERT(expr)
+#endif
 
 #if TOML_SIMPLE_STATIC_ASSERT_MESSAGES
 
@@ -934,10 +985,21 @@ TOML_PUSH_WARNINGS;
 TOML_DISABLE_SPAM_WARNINGS;
 TOML_DISABLE_SWITCH_WARNINGS;
 TOML_DISABLE_SUGGEST_ATTR_WARNINGS;
+
+// misc warning false-positives
 #if TOML_MSVC
-#pragma warning(disable : 5031) // #pragma warning(pop): likely mismatch (false-positive)
-#elif TOML_CLANG && !TOML_HEADER_ONLY && TOML_IMPLEMENTATION
-#pragma clang diagnostic ignored "-Wheader-hygiene" // false-positive
+#pragma warning(disable : 5031) // #pragma warning(pop): likely mismatch
+#if TOML_SHARED_LIB
+#pragma warning(disable : 4251) // dll exports for std lib types
+#endif
+#elif TOML_CLANG
+#pragma clang diagnostic ignored "-Wheader-hygiene"
+#if TOML_CLANG >= 12
+#pragma clang diagnostic ignored "-Wc++20-extensions"
+#endif
+#if (TOML_CLANG == 13) && !defined(__APPLE__)
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#endif
 #endif
 
 //********  impl/std_new.h  ********************************************************************************************
@@ -980,17 +1042,17 @@ namespace toml // non-abi namespace; this is not an error
 TOML_IMPL_NAMESPACE_START
 {
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	std::string narrow(std::wstring_view);
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	std::wstring widen(std::string_view);
 
 #if TOML_HAS_CHAR8
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	std::wstring widen(std::u8string_view);
 
 #endif
@@ -1112,7 +1174,6 @@ TOML_NAMESPACE_START
 	class toml_formatter;
 	class json_formatter;
 	class yaml_formatter;
-	class xml_formatter;
 
 	TOML_ABI_NAMESPACE_BOOL(TOML_EXCEPTIONS, ex, noex);
 #if TOML_EXCEPTIONS
@@ -1134,7 +1195,7 @@ TOML_IMPL_NAMESPACE_START
 
 	// clang-format off
 
-	inline constexpr std::string_view low_character_escape_table[] =
+	inline constexpr std::string_view control_char_escapes[] =
 	{
 		"\\u0000"sv,
 		"\\u0001"sv,
@@ -1238,7 +1299,7 @@ TOML_NAMESPACE_START // abi namespace
 		}
 	}
 
-	enum class TOML_OPEN_FLAGS_ENUM value_flags : uint16_t
+	enum class TOML_OPEN_FLAGS_ENUM value_flags : uint16_t // being an "OPEN" flags enum is not an error
 	{
 		none,
 		format_as_binary = 1,
@@ -1258,12 +1319,14 @@ TOML_NAMESPACE_START // abi namespace
 		allow_literal_strings = (1ull << 2),
 		allow_multi_line_strings = (1ull << 3),
 		allow_real_tabs_in_strings = (1ull << 4),
-		allow_binary_integers = (1ull << 5),
-		allow_octal_integers = (1ull << 6),
-		allow_hexadecimal_integers = (1ull << 7),
-		indent_sub_tables = (1ull << 8),
-		indent_array_elements = (1ull << 9),
+		allow_unicode_strings = (1ull << 5),
+		allow_binary_integers = (1ull << 6),
+		allow_octal_integers = (1ull << 7),
+		allow_hexadecimal_integers = (1ull << 8),
+		indent_sub_tables = (1ull << 9),
+		indent_array_elements = (1ull << 10),
 		indentation = indent_sub_tables | indent_array_elements,
+		relaxed_float_precision = (1ull << 11),
 	};
 	TOML_MAKE_FLAGS(format_flags);
 
@@ -1305,15 +1368,76 @@ TOML_IMPL_NAMESPACE_START
 		is_one_of<std::decay_t<T>, const wchar_t*, wchar_t*, std::wstring_view, std::wstring>;
 
 	template <typename T>
-	static constexpr bool value_retrieval_is_nothrow = !std::is_same_v<remove_cvref<T>, std::string>
+	inline constexpr bool value_retrieval_is_nothrow = !std::is_same_v<remove_cvref<T>, std::string>
 #if TOML_HAS_CHAR8
 													&& !std::is_same_v<remove_cvref<T>, std::u8string>
 #endif
 
 													&& !is_wide_string<T>;
 
+	template <typename, typename>
+	struct copy_ref_;
+	template <typename Dest, typename Src>
+	using copy_ref = typename copy_ref_<Dest, Src>::type;
+
+	template <typename Dest, typename Src>
+	struct copy_ref_
+	{
+		using type = Dest;
+	};
+
+	template <typename Dest, typename Src>
+	struct copy_ref_<Dest, Src&>
+	{
+		using type = std::add_lvalue_reference_t<Dest>;
+	};
+
+	template <typename Dest, typename Src>
+	struct copy_ref_<Dest, Src&&>
+	{
+		using type = std::add_rvalue_reference_t<Dest>;
+	};
+
+	template <typename, typename>
+	struct copy_cv_;
+	template <typename Dest, typename Src>
+	using copy_cv = typename copy_cv_<Dest, Src>::type;
+
+	template <typename Dest, typename Src>
+	struct copy_cv_
+	{
+		using type = Dest;
+	};
+
+	template <typename Dest, typename Src>
+	struct copy_cv_<Dest, const Src>
+	{
+		using type = std::add_const_t<Dest>;
+	};
+
+	template <typename Dest, typename Src>
+	struct copy_cv_<Dest, volatile Src>
+	{
+		using type = std::add_volatile_t<Dest>;
+	};
+
+	template <typename Dest, typename Src>
+	struct copy_cv_<Dest, const volatile Src>
+	{
+		using type = std::add_cv_t<Dest>;
+	};
+
+	template <typename Dest, typename Src>
+	using copy_cvref =
+		copy_ref<copy_ref<copy_cv<std::remove_reference_t<Dest>, std::remove_reference_t<Src>>, Dest>, Src>;
+
 	template <typename T>
 	inline constexpr bool dependent_false = false;
+
+	template <typename T, typename... U>
+	inline constexpr bool first_is_same = false;
+	template <typename T, typename... U>
+	inline constexpr bool first_is_same<T, T, U...> = true;
 
 	// general value traits
 	// (as they relate to their equivalent native TOML type)
@@ -1329,19 +1453,19 @@ TOML_IMPL_NAMESPACE_START
 	};
 
 	template <typename T>
+	struct value_traits<const T> : value_traits<T>
+	{};
+	template <typename T>
+	struct value_traits<volatile T> : value_traits<T>
+	{};
+	template <typename T>
+	struct value_traits<const volatile T> : value_traits<T>
+	{};
+	template <typename T>
 	struct value_traits<T&> : value_traits<T>
 	{};
 	template <typename T>
 	struct value_traits<T&&> : value_traits<T>
-	{};
-	template <typename T>
-	struct value_traits<T* const> : value_traits<T*>
-	{};
-	template <typename T>
-	struct value_traits<T* volatile> : value_traits<T*>
-	{};
-	template <typename T>
-	struct value_traits<T* const volatile> : value_traits<T*>
 	{};
 
 	// integer value_traits specializations - standard types
@@ -1659,6 +1783,21 @@ TOML_IMPL_NAMESPACE_START
 	{
 		using type = T;
 	};
+	template <typename T>
+	struct node_wrapper<const T>
+	{
+		using type = std::add_const_t<typename node_wrapper<T>::type>;
+	};
+	template <typename T>
+	struct node_wrapper<volatile T>
+	{
+		using type = std::add_volatile_t<typename node_wrapper<T>::type>;
+	};
+	template <typename T>
+	struct node_wrapper<const volatile T>
+	{
+		using type = std::add_const_t<std::add_volatile_t<typename node_wrapper<T>::type>>;
+	};
 	template <>
 	struct node_wrapper<std::string>
 	{
@@ -1695,7 +1834,7 @@ TOML_IMPL_NAMESPACE_START
 		using type = value<date_time>;
 	};
 	template <typename T>
-	using wrap_node = typename node_wrapper<T>::type;
+	using wrap_node = typename node_wrapper<std::remove_reference_t<T>>::type;
 
 	// nodes => native value types
 	template <typename T>
@@ -1709,7 +1848,22 @@ TOML_IMPL_NAMESPACE_START
 		using type = T;
 	};
 	template <typename T>
-	using unwrap_node = typename node_unwrapper<T>::type;
+	struct node_unwrapper<const value<T>>
+	{
+		using type = std::add_const_t<T>;
+	};
+	template <typename T>
+	struct node_unwrapper<volatile value<T>>
+	{
+		using type = std::add_volatile_t<T>;
+	};
+	template <typename T>
+	struct node_unwrapper<const volatile value<T>>
+	{
+		using type = std::add_volatile_t<std::add_const_t<T>>;
+	};
+	template <typename T>
+	using unwrap_node = typename node_unwrapper<std::remove_reference_t<T>>::type;
 
 	template <typename T>
 	struct node_type_getter
@@ -1748,28 +1902,42 @@ TOML_NAMESPACE_START
 	inline constexpr bool is_container = is_table<T> || is_array<T>;
 
 	template <typename T>
-	inline constexpr bool is_string = std::is_same_v<impl::wrap_node<impl::remove_cvref<T>>, value<std::string>>;
+	inline constexpr bool is_string = std::is_same_v<				//
+		impl::remove_cvref<impl::wrap_node<impl::remove_cvref<T>>>, //
+		value<std::string>>;
 
 	template <typename T>
-	inline constexpr bool is_integer = std::is_same_v<impl::wrap_node<impl::remove_cvref<T>>, value<int64_t>>;
+	inline constexpr bool is_integer = std::is_same_v<				//
+		impl::remove_cvref<impl::wrap_node<impl::remove_cvref<T>>>, //
+		value<int64_t>>;
 
 	template <typename T>
-	inline constexpr bool is_floating_point = std::is_same_v<impl::wrap_node<impl::remove_cvref<T>>, value<double>>;
+	inline constexpr bool is_floating_point = std::is_same_v<		//
+		impl::remove_cvref<impl::wrap_node<impl::remove_cvref<T>>>, //
+		value<double>>;
 
 	template <typename T>
 	inline constexpr bool is_number = is_integer<T> || is_floating_point<T>;
 
 	template <typename T>
-	inline constexpr bool is_boolean = std::is_same_v<impl::wrap_node<impl::remove_cvref<T>>, value<bool>>;
+	inline constexpr bool is_boolean = std::is_same_v<				//
+		impl::remove_cvref<impl::wrap_node<impl::remove_cvref<T>>>, //
+		value<bool>>;
 
 	template <typename T>
-	inline constexpr bool is_date = std::is_same_v<impl::wrap_node<impl::remove_cvref<T>>, value<date>>;
+	inline constexpr bool is_date = std::is_same_v<					//
+		impl::remove_cvref<impl::wrap_node<impl::remove_cvref<T>>>, //
+		value<date>>;
 
 	template <typename T>
-	inline constexpr bool is_time = std::is_same_v<impl::wrap_node<impl::remove_cvref<T>>, value<time>>;
+	inline constexpr bool is_time = std::is_same_v<					//
+		impl::remove_cvref<impl::wrap_node<impl::remove_cvref<T>>>, //
+		value<time>>;
 
 	template <typename T>
-	inline constexpr bool is_date_time = std::is_same_v<impl::wrap_node<impl::remove_cvref<T>>, value<date_time>>;
+	inline constexpr bool is_date_time = std::is_same_v<			//
+		impl::remove_cvref<impl::wrap_node<impl::remove_cvref<T>>>, //
+		value<date_time>>;
 
 	template <typename T>
 	inline constexpr bool is_chronological = is_date<T> || is_time<T> || is_date_time<T>;
@@ -1840,7 +2008,7 @@ TOML_IMPL_NAMESPACE_START
 
 	template <typename T>
 	TOML_PURE_GETTER
-	inline const T& min(const T& a, const T& b) noexcept //
+	constexpr const T& min(const T& a, const T& b) noexcept //
 	{
 		return a < b ? a : b;
 	}
@@ -1871,118 +2039,100 @@ TOML_IMPL_NAMESPACE_START
 	//    - I can (potentially) avoid forcing users to drag in <sstream> and <iomanip>.
 	//    - Strings in C++. Honestly.
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	TOML_ATTR(nonnull)
 	void print_to_stream(std::ostream&, const char*, size_t);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, std::string_view);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const std::string&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, char);
 
-	TOML_API
-	void print_to_stream(std::ostream&, int8_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, int8_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, int16_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, int16_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, int32_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, int32_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, int64_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, int64_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, uint8_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, uint8_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, uint16_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, uint16_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, uint32_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, uint32_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, uint64_t, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, uint64_t, value_flags = {}, size_t min_digits = 0);
 
-	TOML_API
-	void print_to_stream(std::ostream&, float, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, float, value_flags = {}, bool relaxed_precision = false);
 
-	TOML_API
-	void print_to_stream(std::ostream&, double, value_flags = {});
+	TOML_EXPORTED_FREE_FUNCTION
+	void print_to_stream(std::ostream&, double, value_flags = {}, bool relaxed_precision = false);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, bool);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const toml::date&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const toml::time&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const toml::time_offset&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const toml::date_time&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const source_position&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const source_region&);
 
 #if TOML_ENABLE_FORMATTERS
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const array&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const table&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const value<std::string>&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const value<int64_t>&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const value<double>&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const value<bool>&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const value<date>&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const value<time>&);
 
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	void print_to_stream(std::ostream&, const value<date_time>&);
 
 #endif
-
-	template <typename T>
-	inline void print_to_stream_with_escapes(std::ostream & stream, const T& str)
-	{
-		for (auto c : str)
-		{
-			if TOML_UNLIKELY(c >= '\x00' && c <= '\x1F')
-				print_to_stream(stream, low_character_escape_table[c]);
-			else if TOML_UNLIKELY(c == '\x7F')
-				print_to_stream(stream, "\\u007F"sv);
-			else if TOML_UNLIKELY(c == '"')
-				print_to_stream(stream, "\\\""sv);
-			else if TOML_UNLIKELY(c == '\\')
-				print_to_stream(stream, "\\\\"sv);
-			else
-				print_to_stream(stream, c);
-		}
-	}
 
 	template <typename T, typename U>
 	inline void print_to_stream_bookended(std::ostream & stream, const T& val, const U& bookend)
@@ -2339,6 +2489,20 @@ TOML_NAMESPACE_START
 		{}
 
 		TOML_NODISCARD_CTOR
+		explicit constexpr date_time(const toml::date& d) noexcept //
+			: date{ d },
+			  time{},
+			  offset{} // TINAE - icc bugfix
+		{}
+
+		TOML_NODISCARD_CTOR
+		explicit constexpr date_time(const toml::time& t) noexcept //
+			: date{},
+			  time{ t },
+			  offset{} // TINAE - icc bugfix
+		{}
+
+		TOML_NODISCARD_CTOR
 		constexpr date_time(const toml::date& d, const toml::time& t, const toml::time_offset& off) noexcept
 			: date{ d },
 			  time{ t },
@@ -2412,6 +2576,32 @@ TOML_NAMESPACE_END;
 #endif
 TOML_POP_WARNINGS;
 
+//********  impl/at_path.h  ********************************************************************************************
+
+TOML_NAMESPACE_START
+{
+	TOML_NODISCARD
+	TOML_EXPORTED_FREE_FUNCTION
+	node_view<node> at_path(node & root, std::string_view path) noexcept;
+
+	TOML_NODISCARD
+	TOML_EXPORTED_FREE_FUNCTION
+	node_view<const node> at_path(const node& root, std::string_view path) noexcept;
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+	TOML_NODISCARD
+	TOML_EXPORTED_FREE_FUNCTION
+	node_view<node> at_path(node & root, std::wstring_view path);
+
+	TOML_NODISCARD
+	TOML_EXPORTED_FREE_FUNCTION
+	node_view<const node> at_path(const node& root, std::wstring_view path);
+
+#endif
+}
+TOML_NAMESPACE_END;
+
 //********  impl/node.h  ***********************************************************************************************
 
 TOML_DISABLE_WARNINGS;
@@ -2427,7 +2617,7 @@ TOML_PUSH_WARNINGS;
 
 TOML_NAMESPACE_START
 {
-	class TOML_ABSTRACT_BASE node
+	class TOML_ABSTRACT_BASE TOML_EXPORTED_CLASS node
 	{
 	  private:
 
@@ -2439,62 +2629,110 @@ TOML_NAMESPACE_START
 		decltype(auto) get_value_exact() const noexcept(impl::value_retrieval_is_nothrow<T>);
 
 		template <typename T, typename N>
+		using ref_type_ = std::conditional_t<													//
+			std::is_reference_v<T>,																//
+			impl::copy_ref<impl::copy_cv<impl::unwrap_node<T>, std::remove_reference_t<N>>, T>, //
+			impl::copy_cvref<impl::unwrap_node<T>, N>											//
+			>;
+
+		template <typename T, typename N>
+		using ref_type = std::conditional_t<			 //
+			std::is_reference_v<N>,						 //
+			ref_type_<T, N>,							 //
+			ref_type_<T, std::add_lvalue_reference_t<N>> //
+			>;
+
+		template <typename T, typename N>
 		TOML_PURE_GETTER
-		static decltype(auto) do_ref(N&& n) noexcept
+		static ref_type<T, N&&> do_ref(N&& n) noexcept
 		{
-			using type = impl::unwrap_node<T>;
-			static_assert((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+			using unwrapped_type = impl::unwrap_node<T>;
+			static_assert(toml::is_value<unwrapped_type> || toml::is_container<unwrapped_type>,
 						  "The template type argument of node::ref() must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
-			TOML_ASSERT(
-				n.template is<T>()
-				&& "template type argument T provided to toml::node::ref() didn't match the node's actual type");
-			if constexpr (impl::is_native<type>)
-				return static_cast<N&&>(n).template ref_cast<type>().get();
+
+			TOML_ASSERT_ASSUME(
+				n.template is<unwrapped_type>()
+				&& "template type argument provided to toml::node::ref() didn't match the node's actual type");
+
+			using node_ref = std::remove_volatile_t<std::remove_reference_t<N>>&;
+			using val_type = std::remove_volatile_t<unwrapped_type>;
+			using out_ref  = ref_type<T, N&&>;
+			static_assert(std::is_reference_v<out_ref>);
+
+			if constexpr (toml::is_value<unwrapped_type>)
+				return static_cast<out_ref>(const_cast<node_ref>(n).template ref_cast<val_type>().get());
 			else
-				return static_cast<N&&>(n).template ref_cast<type>();
+				return static_cast<out_ref>(const_cast<node_ref>(n).template ref_cast<val_type>());
 		}
 
 	  protected:
-		node() noexcept = default;
+		TOML_EXPORTED_MEMBER_FUNCTION
+		node() noexcept;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		node(const node&) noexcept;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		node(node&&) noexcept;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		node& operator=(const node&) noexcept;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		node& operator=(node&&) noexcept;
 
+		template <typename T, typename N>
+		using ref_cast_type_ = std::conditional_t<											  //
+			std::is_reference_v<T>,															  //
+			impl::copy_ref<impl::copy_cv<impl::wrap_node<T>, std::remove_reference_t<N>>, T>, //
+			impl::copy_cvref<impl::wrap_node<T>, N>											  //
+			>;
+
+		template <typename T, typename N>
+		using ref_cast_type = std::conditional_t<			  //
+			std::is_reference_v<N>,							  //
+			ref_cast_type_<T, N>,							  //
+			ref_cast_type_<T, std::add_lvalue_reference_t<N>> //
+			>;
+
 		template <typename T>
 		TOML_PURE_INLINE_GETTER
-		impl::wrap_node<T>& ref_cast() & noexcept
+		ref_cast_type<T, node&> ref_cast() & noexcept
 		{
-			return *reinterpret_cast<impl::wrap_node<T>*>(this);
+			using out_ref  = ref_cast_type<T, node&>;
+			using out_type = std::remove_reference_t<out_ref>;
+			return static_cast<out_ref>(*reinterpret_cast<out_type*>(this));
 		}
 
 		template <typename T>
 		TOML_PURE_INLINE_GETTER
-		impl::wrap_node<T>&& ref_cast() && noexcept
+		ref_cast_type<T, node&&> ref_cast() && noexcept
 		{
-			return std::move(*reinterpret_cast<impl::wrap_node<T>*>(this));
+			using out_ref  = ref_cast_type<T, node&&>;
+			using out_type = std::remove_reference_t<out_ref>;
+			return static_cast<out_ref>(*reinterpret_cast<out_type*>(this));
 		}
 
 		template <typename T>
 		TOML_PURE_INLINE_GETTER
-		const impl::wrap_node<T>& ref_cast() const& noexcept
+		ref_cast_type<T, const node&> ref_cast() const& noexcept
 		{
-			return *reinterpret_cast<const impl::wrap_node<T>*>(this);
+			using out_ref  = ref_cast_type<T, const node&>;
+			using out_type = std::remove_reference_t<out_ref>;
+			return static_cast<out_ref>(*reinterpret_cast<out_type*>(this));
 		}
 
-		template <typename N, typename T>
-		using ref_cast_type = decltype(std::declval<N>().template ref_cast<T>());
+		template <typename T>
+		TOML_PURE_INLINE_GETTER
+		ref_cast_type<T, const node&&> ref_cast() const&& noexcept
+		{
+			using out_ref  = ref_cast_type<T, const node&&>;
+			using out_type = std::remove_reference_t<out_ref>;
+			return static_cast<out_ref>(*reinterpret_cast<out_type*>(this));
+		}
 
 	  public:
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		virtual ~node() noexcept;
 
 		TOML_PURE_GETTER
@@ -2510,13 +2748,13 @@ TOML_NAMESPACE_START
 		TOML_PURE_GETTER
 		bool is_homogeneous() const noexcept
 		{
-			using type = impl::unwrap_node<ElemType>;
-			static_assert(
-				std::is_void_v<
-					type> || ((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>),
-				"The template type argument of node::is_homogeneous() must be void or one "
-				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
-			return is_homogeneous(impl::node_type_of<type>);
+			using unwrapped_type = impl::unwrap_node<impl::remove_cvref<ElemType>>;
+			static_assert(std::is_void_v<unwrapped_type> //
+							  || (toml::is_value<unwrapped_type> || toml::is_container<unwrapped_type>),
+						  "The template type argument of node::is_homogeneous() must be void or one "
+						  "of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
+
+			return is_homogeneous(impl::node_type_of<unwrapped_type>);
 		}
 
 		TOML_PURE_GETTER
@@ -2562,27 +2800,27 @@ TOML_NAMESPACE_START
 		TOML_PURE_INLINE_GETTER
 		bool is() const noexcept
 		{
-			using type = impl::unwrap_node<T>;
-			static_assert((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+			using unwrapped_type = impl::unwrap_node<impl::remove_cvref<T>>;
+			static_assert(toml::is_value<unwrapped_type> || toml::is_container<unwrapped_type>,
 						  "The template type argument of node::is() must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
-			if constexpr (std::is_same_v<type, table>)
+			if constexpr (std::is_same_v<unwrapped_type, table>)
 				return is_table();
-			else if constexpr (std::is_same_v<type, array>)
+			else if constexpr (std::is_same_v<unwrapped_type, array>)
 				return is_array();
-			else if constexpr (std::is_same_v<type, std::string>)
+			else if constexpr (std::is_same_v<unwrapped_type, std::string>)
 				return is_string();
-			else if constexpr (std::is_same_v<type, int64_t>)
+			else if constexpr (std::is_same_v<unwrapped_type, int64_t>)
 				return is_integer();
-			else if constexpr (std::is_same_v<type, double>)
+			else if constexpr (std::is_same_v<unwrapped_type, double>)
 				return is_floating_point();
-			else if constexpr (std::is_same_v<type, bool>)
+			else if constexpr (std::is_same_v<unwrapped_type, bool>)
 				return is_boolean();
-			else if constexpr (std::is_same_v<type, date>)
+			else if constexpr (std::is_same_v<unwrapped_type, date>)
 				return is_date();
-			else if constexpr (std::is_same_v<type, time>)
+			else if constexpr (std::is_same_v<unwrapped_type, time>)
 				return is_time();
-			else if constexpr (std::is_same_v<type, date_time>)
+			else if constexpr (std::is_same_v<unwrapped_type, date_time>)
 				return is_date_time();
 		}
 
@@ -2644,27 +2882,27 @@ TOML_NAMESPACE_START
 		TOML_PURE_INLINE_GETTER
 		impl::wrap_node<T>* as() noexcept
 		{
-			using type = impl::unwrap_node<T>;
-			static_assert((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+			using unwrapped_type = impl::unwrap_node<impl::remove_cvref<T>>;
+			static_assert(toml::is_value<unwrapped_type> || toml::is_container<unwrapped_type>,
 						  "The template type argument of node::as() must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
-			if constexpr (std::is_same_v<type, table>)
+			if constexpr (std::is_same_v<unwrapped_type, table>)
 				return as_table();
-			else if constexpr (std::is_same_v<type, array>)
+			else if constexpr (std::is_same_v<unwrapped_type, array>)
 				return as_array();
-			else if constexpr (std::is_same_v<type, std::string>)
+			else if constexpr (std::is_same_v<unwrapped_type, std::string>)
 				return as_string();
-			else if constexpr (std::is_same_v<type, int64_t>)
+			else if constexpr (std::is_same_v<unwrapped_type, int64_t>)
 				return as_integer();
-			else if constexpr (std::is_same_v<type, double>)
+			else if constexpr (std::is_same_v<unwrapped_type, double>)
 				return as_floating_point();
-			else if constexpr (std::is_same_v<type, bool>)
+			else if constexpr (std::is_same_v<unwrapped_type, bool>)
 				return as_boolean();
-			else if constexpr (std::is_same_v<type, date>)
+			else if constexpr (std::is_same_v<unwrapped_type, date>)
 				return as_date();
-			else if constexpr (std::is_same_v<type, time>)
+			else if constexpr (std::is_same_v<unwrapped_type, time>)
 				return as_time();
-			else if constexpr (std::is_same_v<type, date_time>)
+			else if constexpr (std::is_same_v<unwrapped_type, date_time>)
 				return as_date_time();
 		}
 
@@ -2672,27 +2910,27 @@ TOML_NAMESPACE_START
 		TOML_PURE_INLINE_GETTER
 		const impl::wrap_node<T>* as() const noexcept
 		{
-			using type = impl::unwrap_node<T>;
-			static_assert((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
+			using unwrapped_type = impl::unwrap_node<impl::remove_cvref<T>>;
+			static_assert(toml::is_value<unwrapped_type> || toml::is_container<unwrapped_type>,
 						  "The template type argument of node::as() must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
-			if constexpr (std::is_same_v<type, table>)
+			if constexpr (std::is_same_v<unwrapped_type, table>)
 				return as_table();
-			else if constexpr (std::is_same_v<type, array>)
+			else if constexpr (std::is_same_v<unwrapped_type, array>)
 				return as_array();
-			else if constexpr (std::is_same_v<type, std::string>)
+			else if constexpr (std::is_same_v<unwrapped_type, std::string>)
 				return as_string();
-			else if constexpr (std::is_same_v<type, int64_t>)
+			else if constexpr (std::is_same_v<unwrapped_type, int64_t>)
 				return as_integer();
-			else if constexpr (std::is_same_v<type, double>)
+			else if constexpr (std::is_same_v<unwrapped_type, double>)
 				return as_floating_point();
-			else if constexpr (std::is_same_v<type, bool>)
+			else if constexpr (std::is_same_v<unwrapped_type, bool>)
 				return as_boolean();
-			else if constexpr (std::is_same_v<type, date>)
+			else if constexpr (std::is_same_v<unwrapped_type, date>)
 				return as_date();
-			else if constexpr (std::is_same_v<type, time>)
+			else if constexpr (std::is_same_v<unwrapped_type, time>)
 				return as_time();
-			else if constexpr (std::is_same_v<type, date_time>)
+			else if constexpr (std::is_same_v<unwrapped_type, date_time>)
 				return as_date_time();
 		}
 
@@ -2710,23 +2948,30 @@ TOML_NAMESPACE_START
 
 		template <typename T>
 		TOML_PURE_GETTER
-		impl::unwrap_node<T>& ref() & noexcept
+		decltype(auto) ref() & noexcept
 		{
 			return do_ref<T>(*this);
 		}
 
 		template <typename T>
 		TOML_PURE_GETTER
-		impl::unwrap_node<T>&& ref() && noexcept
+		decltype(auto) ref() && noexcept
 		{
 			return do_ref<T>(std::move(*this));
 		}
 
 		template <typename T>
 		TOML_PURE_GETTER
-		const impl::unwrap_node<T>& ref() const& noexcept
+		decltype(auto) ref() const& noexcept
 		{
 			return do_ref<T>(*this);
+		}
+
+		template <typename T>
+		TOML_PURE_GETTER
+		decltype(auto) ref() const&& noexcept
+		{
+			return do_ref<T>(std::move(*this));
 		}
 
 		TOML_PURE_INLINE_GETTER
@@ -2740,7 +2985,7 @@ TOML_NAMESPACE_START
 		// clang-format off
 
 		template <typename Func, typename N, typename T>
-		static constexpr bool can_visit = std::is_invocable_v<Func, ref_cast_type<N, T>>;
+		static constexpr bool can_visit = std::is_invocable_v<Func, ref_cast_type<T, N>>;
 
 		template <typename Func, typename N>
 		static constexpr bool can_visit_any =
@@ -2769,7 +3014,7 @@ TOML_NAMESPACE_START
 		template <typename Func, typename N, typename T>
 		static constexpr bool visit_is_nothrow_one =
 			!can_visit<Func, N, T>
-			|| std::is_nothrow_invocable_v<Func, ref_cast_type<N, T>>;
+			|| std::is_nothrow_invocable_v<Func, ref_cast_type<T, N>>;
 
 		template <typename Func, typename N>
 		static constexpr bool visit_is_nothrow =
@@ -2788,7 +3033,7 @@ TOML_NAMESPACE_START
 		template <typename Func, typename N, typename T, bool = can_visit<Func, N, T>>
 		struct visit_return_type_
 		{
-			using type = decltype(std::declval<Func>()(std::declval<ref_cast_type<N, T>>()));
+			using type = decltype(std::declval<Func>()(std::declval<ref_cast_type<T, N>>()));
 		};
 		template <typename Func, typename N, typename T>
 		struct visit_return_type_<Func, N, T, false>
@@ -2909,14 +3154,48 @@ TOML_NAMESPACE_START
 			return do_visit(*this, static_cast<Func&&>(visitor));
 		}
 
+		template <typename Func>
+		decltype(auto) visit(Func&& visitor) const&& noexcept(visit_is_nothrow<Func&&, const node&&>)
+		{
+			return do_visit(static_cast<const node&&>(*this), static_cast<Func&&>(visitor));
+		}
+
 		TOML_NODISCARD
 		explicit operator node_view<node>() noexcept;
 
 		TOML_NODISCARD
 		explicit operator node_view<const node>() const noexcept;
+
+		TOML_NODISCARD
+		TOML_EXPORTED_MEMBER_FUNCTION
+		node_view<node> at_path(std::string_view path) noexcept;
+
+		TOML_NODISCARD
+		TOML_EXPORTED_MEMBER_FUNCTION
+		node_view<const node> at_path(std::string_view path) const noexcept;
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+		TOML_NODISCARD
+		TOML_EXPORTED_MEMBER_FUNCTION
+		node_view<node> at_path(std::wstring_view path);
+
+		TOML_NODISCARD
+		TOML_EXPORTED_MEMBER_FUNCTION
+		node_view<const node> at_path(std::wstring_view path) const;
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
 	};
 }
 TOML_NAMESPACE_END;
+
+TOML_IMPL_NAMESPACE_START
+{
+	TOML_PURE_GETTER
+	TOML_EXPORTED_FREE_FUNCTION
+	bool node_deep_equality(const node*, const node*) noexcept;
+}
+TOML_IMPL_NAMESPACE_END;
 
 #ifdef _MSC_VER
 #pragma pop_macro("min")
@@ -2955,7 +3234,7 @@ TOML_NAMESPACE_START
 
 	  private:
 		template <typename T>
-		friend class TOML_NAMESPACE::node_view;
+		friend class node_view;
 
 		mutable viewed_type* node_ = nullptr;
 
@@ -3081,7 +3360,7 @@ TOML_NAMESPACE_START
 		TOML_PURE_GETTER
 		bool is() const noexcept
 		{
-			return node_ ? node_->template is<T>() : false;
+			return node_ ? node_->template is<impl::unwrap_node<impl::remove_cvref<T>>>() : false;
 		}
 
 		TOML_NODISCARD
@@ -3105,66 +3384,66 @@ TOML_NAMESPACE_START
 		TOML_PURE_GETTER
 		bool is_homogeneous() const noexcept
 		{
-			return node_ ? node_->template is_homogeneous<impl::unwrap_node<ElemType>>() : false;
+			return node_ ? node_->template is_homogeneous<impl::unwrap_node<impl::remove_cvref<ElemType>>>() : false;
 		}
 
 		template <typename T>
 		TOML_PURE_GETTER
-		auto as() const noexcept
+		auto* as() const noexcept
 		{
 			return node_ ? node_->template as<T>() : nullptr;
 		}
 
 		TOML_PURE_GETTER
-		auto as_table() const noexcept
+		auto* as_table() const noexcept
 		{
 			return as<table>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_array() const noexcept
+		auto* as_array() const noexcept
 		{
 			return as<array>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_string() const noexcept
+		auto* as_string() const noexcept
 		{
 			return as<std::string>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_integer() const noexcept
+		auto* as_integer() const noexcept
 		{
 			return as<int64_t>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_floating_point() const noexcept
+		auto* as_floating_point() const noexcept
 		{
 			return as<double>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_boolean() const noexcept
+		auto* as_boolean() const noexcept
 		{
 			return as<bool>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_date() const noexcept
+		auto* as_date() const noexcept
 		{
 			return as<date>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_time() const noexcept
+		auto* as_time() const noexcept
 		{
 			return as<time>();
 		}
 
 		TOML_PURE_GETTER
-		auto as_date_time() const noexcept
+		auto* as_date_time() const noexcept
 		{
 			return as<date_time>();
 		}
@@ -3231,8 +3510,8 @@ TOML_NAMESPACE_START
 		TOML_PURE_INLINE_GETTER
 		decltype(auto) ref() const noexcept
 		{
-			TOML_ASSERT(node_ && "toml::node_view::ref() called on a node_view that did not reference a node");
-			return node_->template ref<impl::unwrap_node<T>>();
+			TOML_ASSERT_ASSUME(node_ && "toml::node_view::ref() called on a node_view that did not reference a node");
+			return node_->template ref<T>();
 		}
 
 		template <typename Func>
@@ -3243,6 +3522,22 @@ TOML_NAMESPACE_START
 				return node_->visit(static_cast<Func&&>(visitor));
 			if constexpr (!std::is_void_v<return_type>)
 				return return_type{};
+		}
+
+	  public:
+
+		template <typename T>
+		TOML_PURE_GETTER
+		friend bool operator==(const node_view& lhs, const node_view<T>& rhs) noexcept
+		{
+			return impl::node_deep_equality(lhs.node_, rhs.node_);
+		}
+
+		template <typename T>
+		TOML_PURE_GETTER
+		friend bool operator!=(const node_view& lhs, const node_view<T>& rhs) noexcept
+		{
+			return !impl::node_deep_equality(lhs.node_, rhs.node_);
 		}
 
 		TOML_NODISCARD
@@ -3327,7 +3622,13 @@ TOML_NAMESPACE_START
 		{
 			if (auto tbl = this->as_table())
 				return node_view{ tbl->get(key) };
-			return node_view{ nullptr };
+			return {};
+		}
+
+		TOML_NODISCARD
+		node_view at_path(std::string_view path) const noexcept
+		{
+			return node_ ? node_->at_path(path) : node_view{};
 		}
 
 #if TOML_ENABLE_WINDOWS_COMPAT
@@ -3337,7 +3638,13 @@ TOML_NAMESPACE_START
 		{
 			if (auto tbl = this->as_table())
 				return node_view{ tbl->get(key) };
-			return node_view{ nullptr };
+			return {};
+		}
+
+		TOML_NODISCARD
+		node_view at_path(std::wstring_view path) const
+		{
+			return node_ ? node_->at_path(path) : node_view{};
 		}
 
 #endif // TOML_ENABLE_WINDOWS_COMPAT
@@ -3347,7 +3654,7 @@ TOML_NAMESPACE_START
 		{
 			if (auto arr = this->as_array())
 				return node_view{ arr->get(index) };
-			return node_view{ nullptr };
+			return {};
 		}
 
 #if TOML_ENABLE_FORMATTERS
@@ -3376,82 +3683,16 @@ TOML_NAMESPACE_START
 }
 TOML_NAMESPACE_END;
 
-#if TOML_EXTERN_TEMPLATES && !TOML_IMPLEMENTATION
-
-TOML_NAMESPACE_START
-{
-	TOML_EXTERN
-	template class TOML_API node_view<node>;
-	TOML_EXTERN
-	template class TOML_API node_view<const node>;
-
-#define TOML_EXTERN_FUNC(name, T)                                                                                      \
-	TOML_EXTERN                                                                                                        \
-	template TOML_API                                                                                                  \
-	optional<T> node_view<node>::name<T>() const TOML_EXTERN_NOEXCEPT(impl::value_retrieval_is_nothrow<T>);            \
-	TOML_EXTERN                                                                                                        \
-	template TOML_API                                                                                                  \
-	optional<T> node_view<const node>::name<T>() const TOML_EXTERN_NOEXCEPT(impl::value_retrieval_is_nothrow<T>)
-
-	TOML_EXTERN_FUNC(value_exact, std::string_view);
-	TOML_EXTERN_FUNC(value_exact, std::string);
-	TOML_EXTERN_FUNC(value_exact, const char*);
-	TOML_EXTERN_FUNC(value_exact, int64_t);
-	TOML_EXTERN_FUNC(value_exact, double);
-	TOML_EXTERN_FUNC(value_exact, date);
-	TOML_EXTERN_FUNC(value_exact, time);
-	TOML_EXTERN_FUNC(value_exact, date_time);
-	TOML_EXTERN_FUNC(value_exact, bool);
-	TOML_EXTERN_FUNC(value, std::string_view);
-	TOML_EXTERN_FUNC(value, std::string);
-	TOML_EXTERN_FUNC(value, const char*);
-	TOML_EXTERN_FUNC(value, signed char);
-	TOML_EXTERN_FUNC(value, signed short);
-	TOML_EXTERN_FUNC(value, signed int);
-	TOML_EXTERN_FUNC(value, signed long);
-	TOML_EXTERN_FUNC(value, signed long long);
-	TOML_EXTERN_FUNC(value, unsigned char);
-	TOML_EXTERN_FUNC(value, unsigned short);
-	TOML_EXTERN_FUNC(value, unsigned int);
-	TOML_EXTERN_FUNC(value, unsigned long);
-	TOML_EXTERN_FUNC(value, unsigned long long);
-	TOML_EXTERN_FUNC(value, double);
-	TOML_EXTERN_FUNC(value, float);
-	TOML_EXTERN_FUNC(value, date);
-	TOML_EXTERN_FUNC(value, time);
-	TOML_EXTERN_FUNC(value, date_time);
-	TOML_EXTERN_FUNC(value, bool);
-
-#if TOML_HAS_CHAR8
-	TOML_EXTERN_FUNC(value_exact, std::u8string_view);
-	TOML_EXTERN_FUNC(value_exact, std::u8string);
-	TOML_EXTERN_FUNC(value_exact, const char8_t*);
-	TOML_EXTERN_FUNC(value, std::u8string_view);
-	TOML_EXTERN_FUNC(value, std::u8string);
-	TOML_EXTERN_FUNC(value, const char8_t*);
-#endif
-
-#if TOML_ENABLE_WINDOWS_COMPAT
-	TOML_EXTERN_FUNC(value_exact, std::wstring);
-	TOML_EXTERN_FUNC(value, std::wstring);
-#endif
-
-#undef TOML_EXTERN_FUNC
-}
-TOML_NAMESPACE_END;
-
-#endif
-
 TOML_NAMESPACE_START
 {
 	inline node::operator node_view<node>() noexcept
 	{
-		return node_view<node>(this);
+		return node_view<node>{ this };
 	}
 
 	inline node::operator node_view<const node>() const noexcept
 	{
-		return node_view<const node>(this);
+		return node_view<const node>{ this };
 	}
 }
 TOML_NAMESPACE_END;
@@ -3542,7 +3783,10 @@ TOML_IMPL_NAMESPACE_START
 		TOML_NODISCARD
 		static T make(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args&&...>)
 		{
-			return T(static_cast<Args&&>(args)...);
+			if constexpr (std::is_aggregate_v<T>)
+				return T{ static_cast<Args&&>(args)... };
+			else
+				return T(static_cast<Args&&>(args)...);
 		}
 	};
 
@@ -3566,18 +3810,25 @@ TOML_IMPL_NAMESPACE_START
 		TOML_NODISCARD
 		static std::string make(T&& arg) noexcept
 		{
+			using arg_type = std::decay_t<T>;
 #if TOML_HAS_CHAR8
-			if constexpr (is_one_of<std::decay_t<T>, char8_t*, const char8_t*>)
+			if constexpr (is_one_of<arg_type, char8_t*, const char8_t*>)
+			{
 				return std::string(reinterpret_cast<const char*>(static_cast<const char8_t*>(arg)));
-			else if constexpr (is_one_of<remove_cvref<T>, std::u8string, std::u8string_view>)
+			}
+			if constexpr (is_one_of<arg_type, std::u8string, std::u8string_view>)
+			{
 				return std::string(reinterpret_cast<const char*>(static_cast<const char8_t*>(arg.data())),
 								   arg.length());
-#endif // TOML_HAS_CHAR8
+			}
+#endif
 
 #if TOML_ENABLE_WINDOWS_COMPAT
-			if constexpr (is_wide_string<T>)
+			if constexpr (is_wide_string<arg_type>)
+			{
 				return narrow(static_cast<T&&>(arg));
-#endif // TOML_ENABLE_WINDOWS_COMPAT
+			}
+#endif
 		}
 	};
 
@@ -3703,10 +3954,32 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_NODISCARD_CTOR
+		value(const value& other, value_flags flags) noexcept //
+			: node(other),
+			  val_{ other.val_ },
+			  flags_{ flags == preserve_source_value_flags ? other.flags_ : flags }
+		{
+#if TOML_LIFETIME_HOOKS
+			TOML_VALUE_CREATED;
+#endif
+		}
+
+		TOML_NODISCARD_CTOR
 		value(value&& other) noexcept //
 			: node(std::move(other)),
 			  val_{ std::move(other.val_) },
 			  flags_{ other.flags_ }
+		{
+#if TOML_LIFETIME_HOOKS
+			TOML_VALUE_CREATED;
+#endif
+		}
+
+		TOML_NODISCARD_CTOR
+		value(value&& other, value_flags flags) noexcept //
+			: node(std::move(other)),
+			  val_{ std::move(other.val_) },
+			  flags_{ flags == preserve_source_value_flags ? other.flags_ : flags }
 		{
 #if TOML_LIFETIME_HOOKS
 			TOML_VALUE_CREATED;
@@ -3989,6 +4262,12 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_PURE_INLINE_GETTER
+		const value_type&& get() const&& noexcept
+		{
+			return static_cast<const value_type&&>(val_);
+		}
+
+		TOML_PURE_INLINE_GETTER
 		value_type& operator*() & noexcept
 		{
 			return val_;
@@ -4007,6 +4286,12 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_PURE_INLINE_GETTER
+		const value_type&& operator*() const&& noexcept
+		{
+			return static_cast<const value_type&&>(val_);
+		}
+
+		TOML_PURE_INLINE_GETTER
 		explicit operator value_type&() & noexcept
 		{
 			return val_;
@@ -4022,6 +4307,12 @@ TOML_NAMESPACE_START
 		explicit operator const value_type&() const& noexcept
 		{
 			return val_;
+		}
+
+		TOML_PURE_INLINE_GETTER
+		explicit operator const value_type&&() && noexcept
+		{
+			return static_cast<const value_type&&>(val_);
 		}
 
 		TOML_HIDDEN_CONSTRAINT(std::is_class_v<T>, typename T = value_type)
@@ -4071,12 +4362,12 @@ TOML_NAMESPACE_START
 		{
 			if constexpr (std::is_same_v<value_type, double>)
 			{
-				const auto lhs_class = impl::fpclassify(lhs.val_);
-				const auto rhs_class = impl::fpclassify(rhs);
-				if (lhs_class == impl::fp_class::nan && rhs_class == impl::fp_class::nan)
-					return true;
-				if ((lhs_class == impl::fp_class::nan) != (rhs_class == impl::fp_class::nan))
+				const auto lhs_nan = impl::fpclassify(lhs.val_) == impl::fp_class::nan;
+				const auto rhs_nan = impl::fpclassify(rhs) == impl::fp_class::nan;
+				if (lhs_nan != rhs_nan)
 					return false;
+				if (lhs_nan)
+					return true;
 			}
 			return lhs.val_ == rhs;
 		}
@@ -4483,77 +4774,6 @@ TOML_NAMESPACE_START
 }
 TOML_NAMESPACE_END;
 
-#if TOML_EXTERN_TEMPLATES && !TOML_IMPLEMENTATION
-
-TOML_NAMESPACE_START
-{
-	TOML_EXTERN
-	template class TOML_API value<std::string>;
-	TOML_EXTERN
-	template class TOML_API value<int64_t>;
-	TOML_EXTERN
-	template class TOML_API value<double>;
-	TOML_EXTERN
-	template class TOML_API value<bool>;
-	TOML_EXTERN
-	template class TOML_API value<date>;
-	TOML_EXTERN
-	template class TOML_API value<time>;
-	TOML_EXTERN
-	template class TOML_API value<date_time>;
-
-#define TOML_EXTERN_FUNC(name, T)                                                                                      \
-	TOML_EXTERN                                                                                                        \
-	template TOML_API                                                                                                  \
-	optional<T> node::name<T>() const TOML_EXTERN_NOEXCEPT(impl::value_retrieval_is_nothrow<T>)
-
-	TOML_EXTERN_FUNC(value_exact, std::string_view);
-	TOML_EXTERN_FUNC(value_exact, std::string);
-	TOML_EXTERN_FUNC(value_exact, const char*);
-	TOML_EXTERN_FUNC(value_exact, int64_t);
-	TOML_EXTERN_FUNC(value_exact, double);
-	TOML_EXTERN_FUNC(value_exact, date);
-	TOML_EXTERN_FUNC(value_exact, time);
-	TOML_EXTERN_FUNC(value_exact, date_time);
-	TOML_EXTERN_FUNC(value_exact, bool);
-	TOML_EXTERN_FUNC(value, std::string_view);
-	TOML_EXTERN_FUNC(value, std::string);
-	TOML_EXTERN_FUNC(value, const char*);
-	TOML_EXTERN_FUNC(value, signed char);
-	TOML_EXTERN_FUNC(value, signed short);
-	TOML_EXTERN_FUNC(value, signed int);
-	TOML_EXTERN_FUNC(value, signed long);
-	TOML_EXTERN_FUNC(value, signed long long);
-	TOML_EXTERN_FUNC(value, unsigned char);
-	TOML_EXTERN_FUNC(value, unsigned short);
-	TOML_EXTERN_FUNC(value, unsigned int);
-	TOML_EXTERN_FUNC(value, unsigned long);
-	TOML_EXTERN_FUNC(value, unsigned long long);
-	TOML_EXTERN_FUNC(value, double);
-	TOML_EXTERN_FUNC(value, float);
-	TOML_EXTERN_FUNC(value, date);
-	TOML_EXTERN_FUNC(value, time);
-	TOML_EXTERN_FUNC(value, date_time);
-	TOML_EXTERN_FUNC(value, bool);
-#if TOML_HAS_CHAR8
-	TOML_EXTERN_FUNC(value_exact, std::u8string_view);
-	TOML_EXTERN_FUNC(value_exact, std::u8string);
-	TOML_EXTERN_FUNC(value_exact, const char8_t*);
-	TOML_EXTERN_FUNC(value, std::u8string_view);
-	TOML_EXTERN_FUNC(value, std::u8string);
-	TOML_EXTERN_FUNC(value, const char8_t*);
-#endif
-#if TOML_ENABLE_WINDOWS_COMPAT
-	TOML_EXTERN_FUNC(value_exact, std::wstring);
-	TOML_EXTERN_FUNC(value, std::wstring);
-#endif
-
-#undef TOML_EXTERN_FUNC
-}
-TOML_NAMESPACE_END;
-
-#endif
-
 #ifdef _MSC_VER
 #pragma pop_macro("min")
 #pragma pop_macro("max")
@@ -4584,7 +4804,7 @@ TOML_IMPL_NAMESPACE_START
 		// arrays + tables - invoke copy/move ctor
 		if constexpr (is_one_of<unwrapped_type, array, table>)
 		{
-			return new unwrapped_type{ static_cast<T&&>(val) };
+			return new unwrapped_type(static_cast<T&&>(val));
 		}
 
 		// values
@@ -4729,34 +4949,39 @@ TOML_IMPL_NAMESPACE_START
 	  private:
 		template <bool>
 		friend class array_iterator;
-		friend class TOML_NAMESPACE::array;
 
-		using raw_mutable_iterator = std::vector<node_ptr>::iterator;
-		using raw_const_iterator   = std::vector<node_ptr>::const_iterator;
-		using raw_iterator		   = std::conditional_t<IsConst, raw_const_iterator, raw_mutable_iterator>;
+		using mutable_vector_iterator = std::vector<node_ptr>::iterator;
+		using const_vector_iterator	  = std::vector<node_ptr>::const_iterator;
+		using vector_iterator		  = std::conditional_t<IsConst, const_vector_iterator, mutable_vector_iterator>;
 
-		mutable raw_iterator raw_;
-
-		TOML_NODISCARD_CTOR
-		array_iterator(raw_mutable_iterator raw) noexcept //
-			: raw_{ raw }
-		{}
-
-		TOML_CONSTRAINED_TEMPLATE(C, bool C = IsConst)
-		TOML_NODISCARD_CTOR
-		array_iterator(raw_const_iterator raw) noexcept //
-			: raw_{ raw }
-		{}
+		mutable vector_iterator iter_;
 
 	  public:
 		using value_type		= std::conditional_t<IsConst, const node, node>;
 		using reference			= value_type&;
 		using pointer			= value_type*;
 		using difference_type	= ptrdiff_t;
-		using iterator_category = typename std::iterator_traits<raw_iterator>::iterator_category;
+		using iterator_category = typename std::iterator_traits<vector_iterator>::iterator_category;
 
 		TOML_NODISCARD_CTOR
 		array_iterator() noexcept = default;
+
+		TOML_NODISCARD_CTOR
+		explicit array_iterator(mutable_vector_iterator iter) noexcept //
+			: iter_{ iter }
+		{}
+
+		TOML_CONSTRAINED_TEMPLATE(C, bool C = IsConst)
+		TOML_NODISCARD_CTOR
+		explicit array_iterator(const_vector_iterator iter) noexcept //
+			: iter_{ iter }
+		{}
+
+		TOML_CONSTRAINED_TEMPLATE(C, bool C = IsConst)
+		TOML_NODISCARD_CTOR
+		array_iterator(const array_iterator<false>& other) noexcept //
+			: iter_{ other.iter_ }
+		{}
 
 		TOML_NODISCARD_CTOR
 		array_iterator(const array_iterator&) noexcept = default;
@@ -4765,130 +4990,143 @@ TOML_IMPL_NAMESPACE_START
 
 		array_iterator& operator++() noexcept // ++pre
 		{
-			++raw_;
+			++iter_;
 			return *this;
 		}
 
 		array_iterator operator++(int) noexcept // post++
 		{
-			array_iterator out{ raw_ };
-			++raw_;
+			array_iterator out{ iter_ };
+			++iter_;
 			return out;
 		}
 
 		array_iterator& operator--() noexcept // --pre
 		{
-			--raw_;
+			--iter_;
 			return *this;
 		}
 
 		array_iterator operator--(int) noexcept // post--
 		{
-			array_iterator out{ raw_ };
-			--raw_;
+			array_iterator out{ iter_ };
+			--iter_;
 			return out;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		reference operator*() const noexcept
 		{
-			return *raw_->get();
+			return *iter_->get();
 		}
 
 		TOML_PURE_INLINE_GETTER
 		pointer operator->() const noexcept
 		{
-			return raw_->get();
+			return iter_->get();
+		}
+
+		TOML_PURE_INLINE_GETTER
+		explicit operator const vector_iterator&() const noexcept
+		{
+			return iter_;
+		}
+
+		TOML_CONSTRAINED_TEMPLATE(!C, bool C = IsConst)
+		TOML_PURE_INLINE_GETTER
+		explicit operator const const_vector_iterator() const noexcept
+		{
+			return iter_;
 		}
 
 		array_iterator& operator+=(ptrdiff_t rhs) noexcept
 		{
-			raw_ += rhs;
+			iter_ += rhs;
 			return *this;
 		}
 
 		array_iterator& operator-=(ptrdiff_t rhs) noexcept
 		{
-			raw_ -= rhs;
+			iter_ -= rhs;
 			return *this;
 		}
 
 		TOML_NODISCARD
 		friend array_iterator operator+(const array_iterator& lhs, ptrdiff_t rhs) noexcept
 		{
-			return { lhs.raw_ + rhs };
+			return array_iterator{ lhs.iter_ + rhs };
 		}
 
 		TOML_NODISCARD
 		friend array_iterator operator+(ptrdiff_t lhs, const array_iterator& rhs) noexcept
 		{
-			return { rhs.raw_ + lhs };
+			return array_iterator{ rhs.iter_ + lhs };
 		}
 
 		TOML_NODISCARD
 		friend array_iterator operator-(const array_iterator& lhs, ptrdiff_t rhs) noexcept
 		{
-			return { lhs.raw_ - rhs };
+			return array_iterator{ lhs.iter_ - rhs };
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend ptrdiff_t operator-(const array_iterator& lhs, const array_iterator& rhs) noexcept
 		{
-			return lhs.raw_ - rhs.raw_;
+			return lhs.iter_ - rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend bool operator==(const array_iterator& lhs, const array_iterator& rhs) noexcept
 		{
-			return lhs.raw_ == rhs.raw_;
+			return lhs.iter_ == rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend bool operator!=(const array_iterator& lhs, const array_iterator& rhs) noexcept
 		{
-			return lhs.raw_ != rhs.raw_;
+			return lhs.iter_ != rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend bool operator<(const array_iterator& lhs, const array_iterator& rhs) noexcept
 		{
-			return lhs.raw_ < rhs.raw_;
+			return lhs.iter_ < rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend bool operator<=(const array_iterator& lhs, const array_iterator& rhs) noexcept
 		{
-			return lhs.raw_ <= rhs.raw_;
+			return lhs.iter_ <= rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend bool operator>(const array_iterator& lhs, const array_iterator& rhs) noexcept
 		{
-			return lhs.raw_ > rhs.raw_;
+			return lhs.iter_ > rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend bool operator>=(const array_iterator& lhs, const array_iterator& rhs) noexcept
 		{
-			return lhs.raw_ >= rhs.raw_;
+			return lhs.iter_ >= rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		reference operator[](ptrdiff_t idx) const noexcept
 		{
-			return *(raw_ + idx)->get();
+			return *(iter_ + idx)->get();
 		}
+	};
 
-		TOML_DISABLE_WARNINGS;
+	struct array_init_elem
+	{
+		mutable node_ptr value;
 
-		TOML_CONSTRAINED_TEMPLATE(!C, bool C = IsConst)
-		TOML_NODISCARD
-		operator array_iterator<true>() const noexcept
-		{
-			return array_iterator<true>{ raw_ };
-		}
-
-		TOML_ENABLE_WARNINGS;
+		template <typename T>
+		TOML_NODISCARD_CTOR
+		array_init_elem(T&& val, value_flags flags = preserve_source_value_flags) //
+			: value{ make_node(static_cast<T&&>(val), flags) }
+		{}
 	};
 }
 TOML_IMPL_NAMESPACE_END;
@@ -4899,15 +5137,32 @@ TOML_NAMESPACE_START
 
 	using const_array_iterator = POXY_IMPLEMENTATION_DETAIL(impl::array_iterator<true>);
 
-	class array : public node
+	class TOML_EXPORTED_CLASS array : public node
 	{
 	  private:
 
-		friend class TOML_PARSER_TYPENAME;
-		std::vector<impl::node_ptr> elems_;
+		using vector_type			= std::vector<impl::node_ptr>;
+		using vector_iterator		= typename vector_type::iterator;
+		using const_vector_iterator = typename vector_type::const_iterator;
+		vector_type elems_;
 
-		TOML_API
+		TOML_NODISCARD_CTOR
+		TOML_EXPORTED_MEMBER_FUNCTION
+		array(const impl::array_init_elem*, const impl::array_init_elem*);
+
+		TOML_NODISCARD_CTOR
+		array(std::false_type, std::initializer_list<impl::array_init_elem> elems) //
+			: array{ elems.begin(), elems.end() }
+		{}
+
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void preinsertion_resize(size_t idx, size_t count);
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		void insert_at_back(impl::node_ptr&&);
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		vector_iterator insert_at(const_vector_iterator, impl::node_ptr&&);
 
 		template <typename T>
 		void emplace_back_if_not_empty_view(T&& val, value_flags flags)
@@ -4917,14 +5172,14 @@ TOML_NAMESPACE_START
 				if (!val)
 					return;
 			}
-			elems_.emplace_back(impl::make_node(static_cast<T&&>(val), flags));
+			insert_at_back(impl::make_node(static_cast<T&&>(val), flags));
 		}
 
 		TOML_NODISCARD
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		size_t total_leaf_count() const noexcept;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void flatten_child(array&& child, size_t& dest_index) noexcept;
 
 	  public:
@@ -4934,61 +5189,36 @@ TOML_NAMESPACE_START
 		using reference		  = node&;
 		using const_reference = const node&;
 
-		using iterator = array_iterator;
+		TOML_NODISCARD_CTOR
+		TOML_EXPORTED_MEMBER_FUNCTION
+		array() noexcept;
 
-		using const_iterator = const_array_iterator;
-
-#if TOML_LIFETIME_HOOKS
+		TOML_EXPORTED_MEMBER_FUNCTION
+		~array() noexcept;
 
 		TOML_NODISCARD_CTOR
-		array() noexcept
-		{
-			TOML_ARRAY_CREATED;
-		}
-
-		~array() noexcept
-		{
-			TOML_ARRAY_DESTROYED;
-		}
-
-#else
-
-		TOML_NODISCARD_CTOR
-		array() noexcept = default;
-
-#endif
-
-		TOML_NODISCARD_CTOR
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		array(const array&);
 
 		TOML_NODISCARD_CTOR
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		array(array&& other) noexcept;
-
-		TOML_API
-		array& operator=(const array&);
-
-		TOML_API
-		array& operator=(array&& rhs) noexcept;
 
 		TOML_CONSTRAINED_TEMPLATE((sizeof...(ElemTypes) > 0 || !std::is_same_v<impl::remove_cvref<ElemType>, array>),
 								  typename ElemType,
 								  typename... ElemTypes)
 		TOML_NODISCARD_CTOR
 		explicit array(ElemType&& val, ElemTypes&&... vals)
-		{
-			elems_.reserve(sizeof...(ElemTypes) + 1u);
-			emplace_back_if_not_empty_view(static_cast<ElemType&&>(val), preserve_source_value_flags);
-			if constexpr (sizeof...(ElemTypes) > 0)
-			{
-				(emplace_back_if_not_empty_view(static_cast<ElemTypes&&>(vals), preserve_source_value_flags), ...);
-			}
+			: array{ std::false_type{},
+					 std::initializer_list<impl::array_init_elem>{ static_cast<ElemType&&>(val),
+																   static_cast<ElemTypes&&>(vals)... } }
+		{}
 
-#if TOML_LIFETIME_HOOKS
-			TOML_ARRAY_CREATED;
-#endif
-		}
+		TOML_EXPORTED_MEMBER_FUNCTION
+		array& operator=(const array&);
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		array& operator=(array&& rhs) noexcept;
 
 		TOML_CONST_INLINE_GETTER
 		node_type type() const noexcept final
@@ -4997,28 +5227,28 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_PURE_GETTER
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		bool is_homogeneous(node_type ntype) const noexcept final;
 
 		TOML_PURE_GETTER
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		bool is_homogeneous(node_type ntype, node*& first_nonmatch) noexcept final;
 
 		TOML_PURE_GETTER
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		bool is_homogeneous(node_type ntype, const node*& first_nonmatch) const noexcept final;
 
 		template <typename ElemType = void>
 		TOML_PURE_GETTER
 		bool is_homogeneous() const noexcept
 		{
-			using type = impl::unwrap_node<ElemType>;
-			static_assert(
-				std::is_void_v<
-					type> || ((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>),
-				"The template type argument of array::is_homogeneous() must be void or one "
-				"of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
-			return is_homogeneous(impl::node_type_of<type>);
+			using unwrapped_type = impl::unwrap_node<impl::remove_cvref<ElemType>>;
+			static_assert(std::is_void_v<unwrapped_type> //
+							  || (impl::is_native<unwrapped_type> || impl::is_one_of<unwrapped_type, table, array>),
+						  "The template type argument of array::is_homogeneous() must be void or one "
+						  "of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
+
+			return is_homogeneous(impl::node_type_of<unwrapped_type>);
 		}
 		TOML_CONST_INLINE_GETTER
 		bool is_table() const noexcept final
@@ -5241,7 +5471,7 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		node& at(size_t index);
 
 		TOML_NODISCARD
@@ -5274,40 +5504,44 @@ TOML_NAMESPACE_START
 			return *elems_.back();
 		}
 
+		using iterator = array_iterator;
+
+		using const_iterator = const_array_iterator;
+
 		TOML_NODISCARD
 		iterator begin() noexcept
 		{
-			return { elems_.begin() };
+			return iterator{ elems_.begin() };
 		}
 
 		TOML_NODISCARD
 		const_iterator begin() const noexcept
 		{
-			return { elems_.cbegin() };
+			return const_iterator{ elems_.cbegin() };
 		}
 
 		TOML_NODISCARD
 		const_iterator cbegin() const noexcept
 		{
-			return { elems_.cbegin() };
+			return const_iterator{ elems_.cbegin() };
 		}
 
 		TOML_NODISCARD
 		iterator end() noexcept
 		{
-			return { elems_.end() };
+			return iterator{ elems_.end() };
 		}
 
 		TOML_NODISCARD
 		const_iterator end() const noexcept
 		{
-			return { elems_.cend() };
+			return const_iterator{ elems_.cend() };
 		}
 
 		TOML_NODISCARD
 		const_iterator cend() const noexcept
 		{
-			return { elems_.cend() };
+			return const_iterator{ elems_.cend() };
 		}
 
 		TOML_NODISCARD
@@ -5322,16 +5556,6 @@ TOML_NAMESPACE_START
 			return elems_.size();
 		}
 
-		void reserve(size_t new_capacity)
-		{
-			elems_.reserve(new_capacity);
-		}
-
-		void clear() noexcept
-		{
-			elems_.clear();
-		}
-
 		TOML_NODISCARD
 		size_t max_size() const noexcept
 		{
@@ -5344,10 +5568,58 @@ TOML_NAMESPACE_START
 			return elems_.capacity();
 		}
 
-		void shrink_to_fit()
+		TOML_EXPORTED_MEMBER_FUNCTION
+		void reserve(size_t new_capacity);
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		void shrink_to_fit();
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		void truncate(size_t new_size);
+
+		template <typename ElemType>
+		void resize(size_t new_size,
+					ElemType&& default_init_val,
+					value_flags default_init_flags = preserve_source_value_flags)
 		{
-			elems_.shrink_to_fit();
+			static_assert(!is_node_view<ElemType>,
+						  "The default element type argument to toml::array::resize may not be toml::node_view.");
+
+			if (!new_size)
+				clear();
+			else if (new_size > elems_.size())
+				insert(cend(), new_size - elems_.size(), static_cast<ElemType&&>(default_init_val), default_init_flags);
+			else
+				truncate(new_size);
 		}
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		iterator erase(const_iterator pos) noexcept;
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		iterator erase(const_iterator first, const_iterator last) noexcept;
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		array& flatten() &;
+
+		array&& flatten() &&
+		{
+			return static_cast<toml::array&&>(this->flatten());
+		}
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		array& prune(bool recursive = true) & noexcept;
+
+		array&& prune(bool recursive = true) && noexcept
+		{
+			return static_cast<toml::array&&>(this->prune(recursive));
+		}
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		void pop_back() noexcept;
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		void clear() noexcept;
 
 		template <typename ElemType>
 		iterator insert(const_iterator pos, ElemType&& val, value_flags flags = preserve_source_value_flags)
@@ -5357,7 +5629,8 @@ TOML_NAMESPACE_START
 				if (!val)
 					return end();
 			}
-			return { elems_.emplace(pos.raw_, impl::make_node(static_cast<ElemType&&>(val), flags)) };
+			return iterator{ insert_at(const_vector_iterator{ pos },
+									   impl::make_node(static_cast<ElemType&&>(val), flags)) };
 		}
 
 		template <typename ElemType>
@@ -5373,18 +5646,18 @@ TOML_NAMESPACE_START
 			}
 			switch (count)
 			{
-				case 0: return { elems_.begin() + (pos.raw_ - elems_.cbegin()) };
+				case 0: return iterator{ elems_.begin() + (const_vector_iterator{ pos } - elems_.cbegin()) };
 				case 1: return insert(pos, static_cast<ElemType&&>(val), flags);
 				default:
 				{
-					const auto start_idx = static_cast<size_t>(pos.raw_ - elems_.cbegin());
+					const auto start_idx = static_cast<size_t>(const_vector_iterator{ pos } - elems_.cbegin());
 					preinsertion_resize(start_idx, count);
 					size_t i = start_idx;
 					for (size_t e = start_idx + count - 1u; i < e; i++)
 						elems_[i] = impl::make_node(val, flags);
 
 					elems_[i] = impl::make_node(static_cast<ElemType&&>(val), flags);
-					return { elems_.begin() + static_cast<ptrdiff_t>(start_idx) };
+					return iterator{ elems_.begin() + static_cast<ptrdiff_t>(start_idx) };
 				}
 			}
 		}
@@ -5394,7 +5667,7 @@ TOML_NAMESPACE_START
 		{
 			const auto distance = std::distance(first, last);
 			if (distance <= 0)
-				return { elems_.begin() + (pos.raw_ - elems_.cbegin()) };
+				return iterator{ elems_.begin() + (const_vector_iterator{ pos } - elems_.cbegin()) };
 			else
 			{
 				auto count		 = distance;
@@ -5405,9 +5678,9 @@ TOML_NAMESPACE_START
 						if (!(*it))
 							count--;
 					if (!count)
-						return { elems_.begin() + (pos.raw_ - elems_.cbegin()) };
+						return iterator{ elems_.begin() + (const_vector_iterator{ pos } - elems_.cbegin()) };
 				}
-				const auto start_idx = static_cast<size_t>(pos.raw_ - elems_.cbegin());
+				const auto start_idx = static_cast<size_t>(const_vector_iterator{ pos } - elems_.cbegin());
 				preinsertion_resize(start_idx, static_cast<size_t>(count));
 				size_t i = start_idx;
 				for (auto it = first; it != last; it++)
@@ -5422,7 +5695,7 @@ TOML_NAMESPACE_START
 					else
 						elems_[i++] = impl::make_node(*it, flags);
 				}
-				return { elems_.begin() + static_cast<ptrdiff_t>(start_idx) };
+				return iterator{ elems_.begin() + static_cast<ptrdiff_t>(start_idx) };
 			}
 		}
 
@@ -5441,7 +5714,8 @@ TOML_NAMESPACE_START
 			static_assert((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
 						  "Emplacement type parameter must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
-			return { elems_.emplace(pos.raw_, new impl::wrap_node<type>{ static_cast<Args&&>(args)... }) };
+			return iterator{ insert_at(const_vector_iterator{ pos },
+									   impl::node_ptr{ new impl::wrap_node<type>{ static_cast<Args&&>(args)... } }) };
 		}
 
 		template <typename ElemType>
@@ -5455,41 +5729,9 @@ TOML_NAMESPACE_START
 					return end();
 			}
 
-			const auto it = elems_.begin() + (pos.raw_ - elems_.cbegin());
+			const auto it = elems_.begin() + (const_vector_iterator{ pos } - elems_.cbegin());
 			*it			  = impl::make_node(static_cast<ElemType&&>(val), flags);
 			return iterator{ it };
-		}
-
-		iterator erase(const_iterator pos) noexcept
-		{
-			return { elems_.erase(pos.raw_) };
-		}
-
-		iterator erase(const_iterator first, const_iterator last) noexcept
-		{
-			return { elems_.erase(first.raw_, last.raw_) };
-		}
-
-		template <typename ElemType>
-		void resize(size_t new_size,
-					ElemType&& default_init_val,
-					value_flags default_init_flags = preserve_source_value_flags)
-		{
-			static_assert(!is_node_view<ElemType>,
-						  "The default element type argument to toml::array::resize may not be toml::node_view.");
-
-			if (!new_size)
-				elems_.clear();
-			else if (new_size < elems_.size())
-				elems_.resize(new_size);
-			else if (new_size > elems_.size())
-				insert(cend(), new_size - elems_.size(), static_cast<ElemType&&>(default_init_val), default_init_flags);
-		}
-
-		void truncate(size_t new_size)
-		{
-			if (new_size < elems_.size())
-				elems_.resize(new_size);
 		}
 
 		template <typename ElemType>
@@ -5498,36 +5740,40 @@ TOML_NAMESPACE_START
 			emplace_back_if_not_empty_view(static_cast<ElemType&&>(val), flags);
 		}
 
-		template <typename ElemType, typename... Args>
-		decltype(auto) emplace_back(Args&&... args)
+		template <typename ElemType, typename... ElemArgs>
+		decltype(auto) emplace_back(ElemArgs&&... args)
 		{
-			using type = impl::unwrap_node<ElemType>;
-			static_assert((impl::is_native<type> || impl::is_one_of<type, table, array>)&&!impl::is_cvref<type>,
-						  "Emplacement type parameter must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
+			static_assert(!impl::is_cvref<ElemType>, "ElemType may not be const, volatile, or a reference.");
 
-			auto nde = new impl::wrap_node<type>{ static_cast<Args&&>(args)... };
-			elems_.emplace_back(nde);
-			return *nde;
-		}
+			static constexpr auto moving_node_ptr = std::is_same_v<ElemType, impl::node_ptr> //
+												 && sizeof...(ElemArgs) == 1u				 //
+												 && impl::first_is_same<impl::node_ptr&&, ElemArgs&&...>;
 
-		void pop_back() noexcept
-		{
-			elems_.pop_back();
-		}
+			using unwrapped_type = impl::unwrap_node<ElemType>;
 
-		TOML_API
-		array& flatten() &;
+			static_assert(
+				moving_node_ptr										  //
+					|| impl::is_native<unwrapped_type>				  //
+					|| impl::is_one_of<unwrapped_type, table, array>, //
+				"ElemType argument of array::emplace_back() must be one of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
-		TOML_API
-		array&& flatten() &&
-		{
-			return static_cast<toml::array&&>(this->flatten());
+			if constexpr (moving_node_ptr)
+			{
+				insert_at_back(static_cast<ElemArgs&&>(args)...);
+				return *elems_.back();
+			}
+			else
+			{
+				auto ptr = new impl::wrap_node<unwrapped_type>{ static_cast<ElemArgs&&>(args)... };
+				insert_at_back(impl::node_ptr{ ptr });
+				return *ptr;
+			}
 		}
 
 	  private:
 
 		TOML_NODISCARD
-		TOML_API
+		TOML_EXPORTED_STATIC_FUNCTION
 		static bool equal(const array&, const array&) noexcept;
 
 		template <typename T>
@@ -5603,12 +5849,8 @@ TOML_NAMESPACE_END;
 #endif
 TOML_POP_WARNINGS;
 
-//********  impl/table.h  **********************************************************************************************
+//********  impl/key.h  ************************************************************************************************
 
-TOML_DISABLE_WARNINGS;
-#include <map>
-#include <iterator>
-TOML_ENABLE_WARNINGS;
 TOML_PUSH_WARNINGS;
 #ifdef _MSC_VER
 #pragma push_macro("min")
@@ -5627,33 +5869,40 @@ TOML_NAMESPACE_START
 
 	  public:
 
+		TOML_NODISCARD_CTOR
 		key() noexcept = default;
 
+		TOML_NODISCARD_CTOR
 		explicit key(std::string_view k, source_region&& src = {}) //
 			: key_{ k },
 			  source_{ std::move(src) }
 		{}
 
+		TOML_NODISCARD_CTOR
 		explicit key(std::string_view k, const source_region& src) //
 			: key_{ k },
 			  source_{ src }
 		{}
 
+		TOML_NODISCARD_CTOR
 		explicit key(std::string&& k, source_region&& src = {}) noexcept //
 			: key_{ std::move(k) },
 			  source_{ std::move(src) }
 		{}
 
+		TOML_NODISCARD_CTOR
 		explicit key(std::string&& k, const source_region& src) noexcept //
 			: key_{ std::move(k) },
 			  source_{ src }
 		{}
 
+		TOML_NODISCARD_CTOR
 		explicit key(const char* k, source_region&& src = {}) //
 			: key_{ k },
 			  source_{ std::move(src) }
 		{}
 
+		TOML_NODISCARD_CTOR
 		explicit key(const char* k, const source_region& src) //
 			: key_{ k },
 			  source_{ src }
@@ -5661,11 +5910,13 @@ TOML_NAMESPACE_START
 
 #if TOML_ENABLE_WINDOWS_COMPAT
 
+		TOML_NODISCARD_CTOR
 		explicit key(std::wstring_view k, source_region&& src = {}) //
 			: key_{ impl::narrow(k) },
 			  source_{ std::move(src) }
 		{}
 
+		TOML_NODISCARD_CTOR
 		explicit key(std::wstring_view k, const source_region& src) //
 			: key_{ impl::narrow(k) },
 			  source_{ src }
@@ -5817,30 +6068,50 @@ TOML_NAMESPACE_START
 			return lhs >= rhs.key_;
 		}
 
+		using const_iterator = const char*;
+
+		using iterator = const_iterator;
+
+		TOML_PURE_INLINE_GETTER
+		const_iterator begin() const noexcept
+		{
+			return key_.data();
+		}
+
+		TOML_PURE_INLINE_GETTER
+		const_iterator end() const noexcept
+		{
+			return key_.data() + key_.length();
+		}
+
 		friend std::ostream& operator<<(std::ostream& lhs, const key& rhs)
 		{
 			impl::print_to_stream(lhs, rhs.key_);
 			return lhs;
 		}
 	};
+
+	template <typename T>
+	inline constexpr bool is_key = std::is_same_v<impl::remove_cvref<T>, toml::key>;
+
+	template <typename T>
+	inline constexpr bool is_key_or_convertible =
+		is_key<T> || std::is_constructible_v<toml::key, T> || std::is_convertible_v<T, toml::key>;
 }
 TOML_NAMESPACE_END;
-
-TOML_IMPL_NAMESPACE_START
-{
-	template <typename T>
-	inline constexpr bool is_key = std::is_same_v<remove_cvref<T>, toml::key>;
-
-	template <typename T>
-	inline constexpr bool is_key_or_convertible = is_key<T> || std::is_constructible_v<toml::key, T>;
-}
-TOML_IMPL_NAMESPACE_END;
 
 #ifdef _MSC_VER
 #pragma pop_macro("min")
 #pragma pop_macro("max")
 #endif
 TOML_POP_WARNINGS;
+
+//********  impl/table.h  **********************************************************************************************
+
+TOML_DISABLE_WARNINGS;
+#include <map>
+#include <iterator>
+TOML_ENABLE_WARNINGS;
 TOML_PUSH_WARNINGS;
 #ifdef _MSC_VER
 #pragma push_macro("min")
@@ -5866,91 +6137,95 @@ TOML_IMPL_NAMESPACE_START
 	  private:
 		template <bool>
 		friend class table_iterator;
-		friend class TOML_NAMESPACE::table;
-		friend class TOML_PARSER_TYPENAME;
 
 		using proxy_type		   = table_proxy_pair<IsConst>;
-		using raw_mutable_iterator = std::map<toml::key, node_ptr, std::less<>>::iterator;
-		using raw_const_iterator   = std::map<toml::key, node_ptr, std::less<>>::const_iterator;
-		using raw_iterator		   = std::conditional_t<IsConst, raw_const_iterator, raw_mutable_iterator>;
+		using mutable_map_iterator = std::map<toml::key, node_ptr, std::less<>>::iterator;
+		using const_map_iterator   = std::map<toml::key, node_ptr, std::less<>>::const_iterator;
+		using map_iterator		   = std::conditional_t<IsConst, const_map_iterator, mutable_map_iterator>;
 
-		mutable raw_iterator raw_;
-		mutable std::aligned_storage_t<sizeof(proxy_type), alignof(proxy_type)> proxy;
-		mutable bool proxy_instantiated = false;
+		mutable map_iterator iter_;
+		mutable std::aligned_storage_t<sizeof(proxy_type), alignof(proxy_type)> proxy_;
+		mutable bool proxy_instantiated_ = false;
 
 		TOML_NODISCARD
 		proxy_type* get_proxy() const noexcept
 		{
-			if (!proxy_instantiated)
+			if (!proxy_instantiated_)
 			{
-				auto p			   = ::new (static_cast<void*>(&proxy)) proxy_type{ raw_->first, *raw_->second.get() };
-				proxy_instantiated = true;
+				auto p = ::new (static_cast<void*>(&proxy_)) proxy_type{ iter_->first, *iter_->second.get() };
+				proxy_instantiated_ = true;
 				return p;
 			}
 			else
-				return TOML_LAUNDER(reinterpret_cast<proxy_type*>(&proxy));
+				return TOML_LAUNDER(reinterpret_cast<proxy_type*>(&proxy_));
 		}
-
-		TOML_NODISCARD_CTOR
-		table_iterator(raw_mutable_iterator raw) noexcept //
-			: raw_{ raw }
-		{}
-
-		TOML_CONSTRAINED_TEMPLATE(C, bool C = IsConst)
-		TOML_NODISCARD_CTOR
-		table_iterator(raw_const_iterator raw) noexcept //
-			: raw_{ raw }
-		{}
 
 	  public:
 		TOML_NODISCARD_CTOR
 		table_iterator() noexcept = default;
 
 		TOML_NODISCARD_CTOR
+		explicit table_iterator(mutable_map_iterator iter) noexcept //
+			: iter_{ iter }
+		{}
+
+		TOML_CONSTRAINED_TEMPLATE(C, bool C = IsConst)
+		TOML_NODISCARD_CTOR
+		explicit table_iterator(const_map_iterator iter) noexcept //
+			: iter_{ iter }
+		{}
+
+		TOML_CONSTRAINED_TEMPLATE(C, bool C = IsConst)
+		TOML_NODISCARD_CTOR
+		table_iterator(const table_iterator<false>& other) noexcept //
+			: iter_{ other.iter_ }
+		{}
+
+		TOML_NODISCARD_CTOR
 		table_iterator(const table_iterator& other) noexcept //
-			: raw_{ other.raw_ }
+			: iter_{ other.iter_ }
 		{}
 
 		table_iterator& operator=(const table_iterator& rhs) noexcept
 		{
-			raw_			   = rhs.raw_;
-			proxy_instantiated = false;
+			iter_				= rhs.iter_;
+			proxy_instantiated_ = false;
 			return *this;
 		}
 
 		using value_type		= table_proxy_pair<IsConst>;
 		using reference			= value_type&;
 		using pointer			= value_type*;
-		using difference_type	= typename std::iterator_traits<raw_iterator>::difference_type;
-		using iterator_category = typename std::iterator_traits<raw_iterator>::iterator_category;
+		using difference_type	= typename std::iterator_traits<map_iterator>::difference_type;
+		using iterator_category = typename std::iterator_traits<map_iterator>::iterator_category;
 
 		table_iterator& operator++() noexcept // ++pre
 		{
-			++raw_;
-			proxy_instantiated = false;
+			++iter_;
+			proxy_instantiated_ = false;
 			return *this;
 		}
 
 		table_iterator operator++(int) noexcept // post++
 		{
-			table_iterator out{ raw_ };
-			++raw_;
-			proxy_instantiated = false;
+			table_iterator out{ iter_ };
+			++iter_;
+			proxy_instantiated_ = false;
 			return out;
 		}
 
 		table_iterator& operator--() noexcept // --pre
 		{
-			--raw_;
-			proxy_instantiated = false;
+			--iter_;
+			proxy_instantiated_ = false;
 			return *this;
 		}
 
 		table_iterator operator--(int) noexcept // post--
 		{
-			table_iterator out{ raw_ };
-			--raw_;
-			proxy_instantiated = false;
+			table_iterator out{ iter_ };
+			--iter_;
+			proxy_instantiated_ = false;
 			return out;
 		}
 
@@ -5967,27 +6242,29 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_PURE_INLINE_GETTER
+		explicit operator const map_iterator&() const noexcept
+		{
+			return iter_;
+		}
+
+		TOML_CONSTRAINED_TEMPLATE(!C, bool C = IsConst)
+		TOML_PURE_INLINE_GETTER
+		explicit operator const const_map_iterator() const noexcept
+		{
+			return iter_;
+		}
+
+		TOML_PURE_INLINE_GETTER
 		friend bool operator==(const table_iterator& lhs, const table_iterator& rhs) noexcept
 		{
-			return lhs.raw_ == rhs.raw_;
+			return lhs.iter_ == rhs.iter_;
 		}
 
 		TOML_PURE_INLINE_GETTER
 		friend bool operator!=(const table_iterator& lhs, const table_iterator& rhs) noexcept
 		{
-			return lhs.raw_ != rhs.raw_;
+			return lhs.iter_ != rhs.iter_;
 		}
-
-		TOML_DISABLE_WARNINGS;
-
-		TOML_CONSTRAINED_TEMPLATE(!C, bool C = IsConst)
-		TOML_NODISCARD
-		operator table_iterator<true>() const noexcept
-		{
-			return table_iterator<true>{ raw_ };
-		}
-
-		TOML_ENABLE_WARNINGS;
 	};
 
 	struct table_init_pair
@@ -6011,61 +6288,48 @@ TOML_NAMESPACE_START
 
 	using const_table_iterator = POXY_IMPLEMENTATION_DETAIL(impl::table_iterator<true>);
 
-	class table : public node
+	class TOML_EXPORTED_CLASS table : public node
 	{
 	  private:
 
-		friend class TOML_PARSER_TYPENAME;
+		using map_type			 = std::map<toml::key, impl::node_ptr, std::less<>>;
+		using map_iterator		 = typename map_type::iterator;
+		using const_map_iterator = typename map_type::const_iterator;
+		map_type map_;
 
-		std::map<toml::key, impl::node_ptr, std::less<>> map_;
 		bool inline_ = false;
 
 		TOML_NODISCARD_CTOR
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		table(const impl::table_init_pair*, const impl::table_init_pair*);
 
 	  public:
 
-		using iterator = table_iterator;
+		TOML_NODISCARD_CTOR
+		TOML_EXPORTED_MEMBER_FUNCTION
+		table() noexcept;
 
-		using const_iterator = const_table_iterator;
-
-#if TOML_LIFETIME_HOOKS
+		TOML_EXPORTED_MEMBER_FUNCTION
+		~table() noexcept;
 
 		TOML_NODISCARD_CTOR
-		table() noexcept
-		{
-			TOML_TABLE_CREATED;
-		}
-
-		~table() noexcept
-		{
-			TOML_TABLE_DESTROYED;
-		}
-#else
-
-		TOML_NODISCARD_CTOR
-		table() noexcept = default;
-
-#endif
-
-		TOML_NODISCARD_CTOR
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		table(const table&);
 
 		TOML_NODISCARD_CTOR
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		table(table&& other) noexcept;
 
 		TOML_NODISCARD_CTOR
+		TOML_EXPORTED_MEMBER_FUNCTION
 		explicit table(std::initializer_list<impl::table_init_pair> kvps) //
-			: table{ kvps.begin(), kvps.end() }
+			: table(kvps.begin(), kvps.end())
 		{}
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		table& operator=(const table&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		table& operator=(table&& rhs) noexcept;
 
 		TOML_CONST_INLINE_GETTER
@@ -6075,15 +6339,15 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_PURE_GETTER
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		bool is_homogeneous(node_type ntype) const noexcept final;
 
 		TOML_PURE_GETTER
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		bool is_homogeneous(node_type ntype, node*& first_nonmatch) noexcept final;
 
 		TOML_PURE_GETTER
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		bool is_homogeneous(node_type ntype, const node*& first_nonmatch) const noexcept final;
 
 		template <typename ElemType = void>
@@ -6292,7 +6556,7 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_PURE_GETTER
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		node* get(std::string_view key) noexcept;
 
 		TOML_PURE_INLINE_GETTER
@@ -6306,6 +6570,9 @@ TOML_NAMESPACE_START
 		TOML_NODISCARD
 		node* get(std::wstring_view key)
 		{
+			if (empty())
+				return nullptr;
+
 			return get(impl::narrow(key));
 		}
 
@@ -6317,41 +6584,44 @@ TOML_NAMESPACE_START
 
 #endif // TOML_ENABLE_WINDOWS_COMPAT
 
-		template <typename ValueType>
+		template <typename T>
 		TOML_PURE_GETTER
-		impl::wrap_node<ValueType>* get_as(std::string_view key) noexcept
+		impl::wrap_node<T>* get_as(std::string_view key) noexcept
 		{
 			const auto n = this->get(key);
-			return n ? n->template as<ValueType>() : nullptr;
+			return n ? n->template as<T>() : nullptr;
 		}
 
-		template <typename ValueType>
+		template <typename T>
 		TOML_PURE_GETTER
-		const impl::wrap_node<ValueType>* get_as(std::string_view key) const noexcept
+		const impl::wrap_node<T>* get_as(std::string_view key) const noexcept
 		{
-			return const_cast<table&>(*this).template get_as<ValueType>(key);
+			return const_cast<table&>(*this).template get_as<T>(key);
 		}
 
 #if TOML_ENABLE_WINDOWS_COMPAT
 
-		template <typename ValueType>
+		template <typename T>
 		TOML_NODISCARD
-		impl::wrap_node<ValueType>* get_as(std::wstring_view key)
+		impl::wrap_node<T>* get_as(std::wstring_view key)
 		{
-			return get_as<ValueType>(impl::narrow(key));
+			if (empty())
+				return nullptr;
+
+			return get_as<T>(impl::narrow(key));
 		}
 
-		template <typename ValueType>
+		template <typename T>
 		TOML_NODISCARD
-		const impl::wrap_node<ValueType>* get_as(std::wstring_view key) const
+		const impl::wrap_node<T>* get_as(std::wstring_view key) const
 		{
-			return const_cast<table&>(*this).template get_as<ValueType>(key);
+			return const_cast<table&>(*this).template get_as<T>(key);
 		}
 
 #endif // TOML_ENABLE_WINDOWS_COMPAT
 
 		TOML_NODISCARD
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		node& at(std::string_view key);
 
 		TOML_NODISCARD
@@ -6375,6 +6645,10 @@ TOML_NAMESPACE_START
 		}
 
 #endif // TOML_ENABLE_WINDOWS_COMPAT
+
+		using iterator = toml::table_iterator;
+
+		using const_iterator = toml::const_table_iterator;
 
 		TOML_PURE_INLINE_GETTER
 		iterator begin() noexcept
@@ -6424,12 +6698,211 @@ TOML_NAMESPACE_START
 			return map_.size();
 		}
 
-		void clear() noexcept
+	  private:
+
+		TOML_PURE_GETTER
+		TOML_EXPORTED_MEMBER_FUNCTION
+		map_iterator get_lower_bound(std::string_view) noexcept;
+
+	  public:
+
+		TOML_PURE_GETTER
+		iterator lower_bound(std::string_view key) noexcept
 		{
-			map_.clear();
+			return iterator{ get_lower_bound(key) };
 		}
 
-		TOML_CONSTRAINED_TEMPLATE((impl::is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
+		TOML_PURE_GETTER
+		const_iterator lower_bound(std::string_view key) const noexcept
+		{
+			return const_iterator{ const_cast<table&>(*this).get_lower_bound(key) };
+		}
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+		TOML_NODISCARD
+		iterator lower_bound(std::wstring_view key)
+		{
+			if (empty())
+				return end();
+
+			return lower_bound(impl::narrow(key));
+		}
+
+		TOML_NODISCARD
+		const_iterator lower_bound(std::wstring_view key) const
+		{
+			if (empty())
+				return end();
+
+			return lower_bound(impl::narrow(key));
+		}
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
+
+		TOML_PURE_GETTER
+		TOML_EXPORTED_MEMBER_FUNCTION
+		iterator find(std::string_view key) noexcept;
+
+		TOML_PURE_GETTER
+		TOML_EXPORTED_MEMBER_FUNCTION
+		const_iterator find(std::string_view key) const noexcept;
+
+		TOML_PURE_GETTER
+		bool contains(std::string_view key) const noexcept
+		{
+			return get(key) != nullptr;
+		}
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+		TOML_NODISCARD
+		iterator find(std::wstring_view key)
+		{
+			if (empty())
+				return end();
+
+			return find(impl::narrow(key));
+		}
+
+		TOML_NODISCARD
+		const_iterator find(std::wstring_view key) const
+		{
+			return find(impl::narrow(key));
+		}
+
+		TOML_NODISCARD
+		bool contains(std::wstring_view key) const
+		{
+			return contains(impl::narrow(key));
+		}
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
+
+	  private:
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		map_iterator erase(const_map_iterator) noexcept;
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		map_iterator erase(const_map_iterator, const_map_iterator) noexcept;
+
+	  public:
+
+		iterator erase(iterator pos) noexcept
+		{
+			return iterator{ erase(const_map_iterator{ pos }) };
+		}
+
+		iterator erase(const_iterator pos) noexcept
+		{
+			return iterator{ erase(const_map_iterator{ pos }) };
+		}
+
+		iterator erase(const_iterator begin, const_iterator end) noexcept
+		{
+			return iterator{ erase(const_map_iterator{ begin }, const_map_iterator{ end }) };
+		}
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		size_t erase(std::string_view key) noexcept;
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+		size_t erase(std::wstring_view key)
+		{
+			if (empty())
+				return false;
+
+			return erase(impl::narrow(key));
+		}
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		table& prune(bool recursive = true) & noexcept;
+
+		table&& prune(bool recursive = true) && noexcept
+		{
+			return static_cast<toml::table&&>(this->prune(recursive));
+		}
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		void clear() noexcept;
+
+	  private:
+
+		TOML_EXPORTED_MEMBER_FUNCTION
+		map_iterator insert_with_hint(const_iterator, key&&, impl::node_ptr&&);
+
+	  public:
+
+		TOML_CONSTRAINED_TEMPLATE((is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
+								  typename ValueType,
+								  typename KeyType,
+								  typename... ValueArgs)
+		iterator emplace_hint(const_iterator hint, KeyType&& key, ValueArgs&&... args)
+		{
+			static_assert(!impl::is_wide_string<KeyType> || TOML_ENABLE_WINDOWS_COMPAT,
+						  "Emplacement using wide-character keys is only supported on Windows with "
+						  "TOML_ENABLE_WINDOWS_COMPAT enabled.");
+
+			static_assert(!impl::is_cvref<ValueType>, "ValueType may not be const, volatile, or a reference.");
+
+			if constexpr (impl::is_wide_string<KeyType>)
+			{
+#if TOML_ENABLE_WINDOWS_COMPAT
+				return emplace_hint<ValueType>(hint,
+											   impl::narrow(static_cast<KeyType&&>(key)),
+											   static_cast<ValueArgs&&>(args)...);
+#else
+				static_assert(impl::dependent_false<KeyType>, "Evaluated unreachable branch!");
+#endif
+			}
+			else
+			{
+				static constexpr auto moving_node_ptr = std::is_same_v<ValueType, impl::node_ptr> //
+													 && sizeof...(ValueArgs) == 1u				  //
+													 && impl::first_is_same<impl::node_ptr&&, ValueArgs&&...>;
+				using unwrapped_type = impl::unwrap_node<ValueType>;
+
+				static_assert(moving_node_ptr										//
+								  || impl::is_native<unwrapped_type>				//
+								  || impl::is_one_of<unwrapped_type, table, array>, //
+							  "ValueType argument of table::emplace_hint() must be one "
+							  "of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
+
+				map_iterator ipos = insert_with_hint(hint, toml::key{ static_cast<KeyType&&>(key) }, nullptr);
+
+				// if second is nullptr then we successully claimed the key and inserted the empty sentinel,
+				// so now we have to construct the actual value
+				if (!ipos->second)
+				{
+					if constexpr (moving_node_ptr)
+						ipos->second = std::move(static_cast<ValueArgs&&>(args)...);
+					else
+					{
+#if TOML_COMPILER_EXCEPTIONS
+						try
+						{
+#endif
+							ipos->second.reset(
+								new impl::wrap_node<unwrapped_type>{ static_cast<ValueArgs&&>(args)... });
+#if TOML_COMPILER_EXCEPTIONS
+						}
+						catch (...)
+						{
+							erase(const_map_iterator{ ipos }); // strong exception guarantee
+							throw;
+						}
+#endif
+					}
+				}
+				return iterator{ ipos };
+			}
+		}
+
+		TOML_CONSTRAINED_TEMPLATE((is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
 								  typename KeyType,
 								  typename ValueType)
 		std::pair<iterator, bool> insert(KeyType&& key,
@@ -6457,24 +6930,24 @@ TOML_NAMESPACE_START
 			else
 			{
 				const auto key_view = std::string_view{ key };
-				auto ipos			= map_.lower_bound(key_view);
+				map_iterator ipos	= get_lower_bound(key_view);
 				if (ipos == map_.end() || ipos->first != key_view)
 				{
-					ipos = map_.emplace_hint(ipos,
-											 static_cast<KeyType&&>(key),
-											 impl::make_node(static_cast<ValueType&&>(val), flags));
+					ipos = insert_with_hint(const_iterator{ ipos },
+											toml::key{ static_cast<KeyType&&>(key) },
+											impl::make_node(static_cast<ValueType&&>(val), flags));
 					return { iterator{ ipos }, true };
 				}
 				return { iterator{ ipos }, false };
 			}
 		}
 
-		TOML_CONSTRAINED_TEMPLATE((!impl::is_key_or_convertible<Iter> && !impl::is_wide_string<Iter>), typename Iter)
-		void insert(Iter first, Iter last, value_flags flags = preserve_source_value_flags)
+		TOML_CONSTRAINED_TEMPLATE((!is_key_or_convertible<Iter> && !impl::is_wide_string<Iter>), typename Iter)
+		void insert(Iter begin, Iter end, value_flags flags = preserve_source_value_flags)
 		{
-			if (first == last)
+			if (begin == end)
 				return;
-			for (auto it = first; it != last; it++)
+			for (auto it = begin; it != end; it++)
 			{
 				if constexpr (std::is_rvalue_reference_v<decltype(*it)>)
 					insert(std::move((*it).first), std::move((*it).second), flags);
@@ -6483,7 +6956,7 @@ TOML_NAMESPACE_START
 			}
 		}
 
-		TOML_CONSTRAINED_TEMPLATE((impl::is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
+		TOML_CONSTRAINED_TEMPLATE((is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
 								  typename KeyType,
 								  typename ValueType)
 		std::pair<iterator, bool> insert_or_assign(KeyType&& key,
@@ -6513,12 +6986,12 @@ TOML_NAMESPACE_START
 			else
 			{
 				const auto key_view = std::string_view{ key };
-				auto ipos			= map_.lower_bound(key_view);
+				map_iterator ipos	= get_lower_bound(key_view);
 				if (ipos == map_.end() || ipos->first != key_view)
 				{
-					ipos = map_.emplace_hint(ipos,
-											 static_cast<KeyType&&>(key),
-											 impl::make_node(static_cast<ValueType&&>(val), flags));
+					ipos = insert_with_hint(const_iterator{ ipos },
+											toml::key{ static_cast<KeyType&&>(key) },
+											impl::make_node(static_cast<ValueType&&>(val), flags));
 					return { iterator{ ipos }, true };
 				}
 				else
@@ -6529,84 +7002,7 @@ TOML_NAMESPACE_START
 			}
 		}
 
-		TOML_PURE_GETTER
-		TOML_API
-		iterator lower_bound(std::string_view key) noexcept;
-
-		TOML_PURE_GETTER
-		TOML_API
-		const_iterator lower_bound(std::string_view key) const noexcept;
-
-#if TOML_ENABLE_WINDOWS_COMPAT
-
-		TOML_NODISCARD
-		iterator lower_bound(std::wstring_view key)
-		{
-			return lower_bound(impl::narrow(key));
-		}
-
-		TOML_NODISCARD
-		const_iterator lower_bound(std::wstring_view key) const
-		{
-			return lower_bound(impl::narrow(key));
-		}
-
-#endif // TOML_ENABLE_WINDOWS_COMPAT
-
-		TOML_CONSTRAINED_TEMPLATE((impl::is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
-								  typename ValueType,
-								  typename KeyType,
-								  typename... ValueArgs)
-		iterator emplace_hint(const_iterator hint, KeyType&& key, ValueArgs&&... args)
-		{
-			static_assert(!impl::is_wide_string<KeyType> || TOML_ENABLE_WINDOWS_COMPAT,
-						  "Emplacement using wide-character keys is only supported on Windows with "
-						  "TOML_ENABLE_WINDOWS_COMPAT enabled.");
-
-			static_assert(!impl::is_cvref<ValueType>, "ValueType may not be const, volatile, or a reference.");
-
-			if constexpr (impl::is_wide_string<KeyType>)
-			{
-#if TOML_ENABLE_WINDOWS_COMPAT
-				return emplace_hint<ValueType>(hint,
-											   impl::narrow(static_cast<KeyType&&>(key)),
-											   static_cast<ValueArgs&&>(args)...);
-#else
-				static_assert(impl::dependent_false<KeyType>, "Evaluated unreachable branch!");
-#endif
-			}
-			else
-			{
-				using unwrapped_type = impl::unwrap_node<ValueType>;
-				static_assert((impl::is_native<unwrapped_type> || impl::is_one_of<unwrapped_type, table, array>),
-							  "ValueType argument of table::emplace_hint() must be one "
-							  "of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
-
-				auto ipos = map_.emplace_hint(hint.raw_, static_cast<KeyType&&>(key), nullptr);
-
-				// if second is nullptr then we successully claimed the key and inserted the empty sentinel,
-				// so now we have to construct the actual value
-				if (!ipos->second)
-				{
-#if TOML_COMPILER_EXCEPTIONS
-					try
-					{
-						ipos->second.reset(new impl::wrap_node<unwrapped_type>{ static_cast<ValueArgs&&>(args)... });
-					}
-					catch (...)
-					{
-						map_.erase(ipos); // strong exception guarantee
-						throw;
-					}
-#else
-					ipos->second.reset(new impl::wrap_node<unwrapped_type>{ static_cast<ValueArgs&&>(args)... });
-#endif
-				}
-				return ipos;
-			}
-		}
-
-		TOML_CONSTRAINED_TEMPLATE((impl::is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
+		TOML_CONSTRAINED_TEMPLATE((is_key_or_convertible<KeyType&&> || impl::is_wide_string<KeyType>),
 								  typename ValueType,
 								  typename KeyType,
 								  typename... ValueArgs)
@@ -6634,91 +7030,18 @@ TOML_NAMESPACE_START
 							  "of:" TOML_SA_UNWRAPPED_NODE_TYPE_LIST);
 
 				const auto key_view = std::string_view{ key };
-				auto ipos			= map_.lower_bound(key_view);
+				auto ipos			= get_lower_bound(key_view);
 				if (ipos == map_.end() || ipos->first != key_view)
 				{
-					ipos = map_.emplace_hint(ipos,
-											 static_cast<KeyType&&>(key),
-											 new impl::wrap_node<unwrapped_type>{ static_cast<ValueArgs&&>(args)... });
+					ipos = insert_with_hint(
+						const_iterator{ ipos },
+						toml::key{ static_cast<KeyType&&>(key) },
+						impl::node_ptr{ new impl::wrap_node<unwrapped_type>{ static_cast<ValueArgs&&>(args)... } });
 					return { iterator{ ipos }, true };
 				}
 				return { iterator{ ipos }, false };
 			}
 		}
-
-		iterator erase(iterator pos) noexcept
-		{
-			return { map_.erase(pos.raw_) };
-		}
-
-		iterator erase(const_iterator pos) noexcept
-		{
-			return { map_.erase(pos.raw_) };
-		}
-
-		iterator erase(const_iterator first, const_iterator last) noexcept
-		{
-			return { map_.erase(first.raw_, last.raw_) };
-		}
-
-		bool erase(std::string_view key) noexcept
-		{
-			if (auto it = map_.find(key); it != map_.end())
-			{
-				map_.erase(it);
-				return true;
-			}
-			return false;
-		}
-
-#if TOML_ENABLE_WINDOWS_COMPAT
-
-		bool erase(std::wstring_view key)
-		{
-			return erase(impl::narrow(key));
-		}
-
-#endif // TOML_ENABLE_WINDOWS_COMPAT
-
-		TOML_NODISCARD
-		iterator find(std::string_view key) noexcept
-		{
-			return { map_.find(key) };
-		}
-
-		TOML_NODISCARD
-		const_iterator find(std::string_view key) const noexcept
-		{
-			return { map_.find(key) };
-		}
-
-		TOML_NODISCARD
-		bool contains(std::string_view key) const noexcept
-		{
-			return get(key) != nullptr;
-		}
-
-#if TOML_ENABLE_WINDOWS_COMPAT
-
-		TOML_NODISCARD
-		iterator find(std::wstring_view key)
-		{
-			return find(impl::narrow(key));
-		}
-
-		TOML_NODISCARD
-		const_iterator find(std::wstring_view key) const
-		{
-			return find(impl::narrow(key));
-		}
-
-		TOML_NODISCARD
-		bool contains(std::wstring_view key) const
-		{
-			return contains(impl::narrow(key));
-		}
-
-#endif // TOML_ENABLE_WINDOWS_COMPAT
 
 		TOML_NODISCARD
 		node_view<node> operator[](std::string_view key) noexcept
@@ -6750,8 +7073,8 @@ TOML_NAMESPACE_START
 
 	  private:
 
-		TOML_NODISCARD
-		TOML_API
+		TOML_PURE_GETTER
+		TOML_EXPORTED_STATIC_FUNCTION
 		static bool equal(const table&, const table&) noexcept;
 
 	  public:
@@ -6787,7 +7110,7 @@ TOML_NAMESPACE_END;
 #endif
 TOML_POP_WARNINGS;
 
-//********  impl/utf8.h  ***********************************************************************************************
+//********  impl/unicode_autogenerated.h  ******************************************************************************
 
 TOML_PUSH_WARNINGS;
 #ifdef _MSC_VER
@@ -6802,60 +7125,10 @@ TOML_PUSH_WARNINGS;
 #pragma GCC optimize("O1") // codegen bugs
 #endif
 
+// the functions in this namespace block are automatically generated by a tool - they are not meant to be hand-edited
+
 TOML_IMPL_NAMESPACE_START
 {
-	// note: a number of these functions were machine-generated. you'll know them when you see them.
-	//       they are tested separately in another project, I promise!
-
-	TOML_CONST_GETTER
-	constexpr bool is_string_delimiter(char32_t c) noexcept
-	{
-		return c == U'"' || c == U'\'';
-	}
-
-	TOML_CONST_GETTER
-	constexpr bool is_ascii_letter(char32_t c) noexcept
-	{
-		return (c >= U'a' && c <= U'z') || (c >= U'A' && c <= U'Z');
-	}
-
-	TOML_CONST_GETTER
-	constexpr bool is_binary_digit(char32_t c) noexcept
-	{
-		return c == U'0' || c == U'1';
-	}
-
-	TOML_CONST_GETTER
-	constexpr bool is_octal_digit(char32_t c) noexcept
-	{
-		return (c >= U'0' && c <= U'7');
-	}
-
-	TOML_CONST_GETTER
-	constexpr bool is_decimal_digit(char32_t c) noexcept
-	{
-		return (c >= U'0' && c <= U'9');
-	}
-
-	TOML_CONST_GETTER
-	constexpr bool is_hexadecimal_digit(char32_t c) noexcept
-	{
-		return U'0' <= c && c <= U'f' && (1ull << (static_cast<uint_least64_t>(c) - 0x30u)) & 0x7E0000007E03FFull;
-	}
-
-	template <typename T>
-	TOML_CONST_GETTER
-	constexpr uint_least32_t hex_to_dec(const T c) noexcept
-	{
-		if constexpr (std::is_same_v<remove_cvref<T>, uint_least32_t>)
-			return c >= 0x41u					 // >= 'A'
-					 ? 10u + (c | 0x20u) - 0x61u // - 'a'
-					 : c - 0x30u				 // - '0'
-				;
-		else
-			return hex_to_dec(static_cast<uint_least32_t>(c));
-	}
-
 	TOML_CONST_GETTER
 	constexpr bool is_ascii_horizontal_whitespace(char32_t c) noexcept
 	{
@@ -6865,6 +7138,8 @@ TOML_IMPL_NAMESPACE_START
 	TOML_CONST_GETTER
 	constexpr bool is_non_ascii_horizontal_whitespace(char32_t c) noexcept
 	{
+		// 20 code units from 8 ranges (spanning a search area of 65120)
+
 		if (c < U'\xA0' || c > U'\uFEFF')
 			return false;
 
@@ -6880,7 +7155,7 @@ TOML_IMPL_NAMESPACE_START
 				return (U'\u2000' <= c && c <= U'\u200B') || (U'\u205F' <= c && c <= U'\u2060') || c == U'\u202F';
 			default: TOML_UNREACHABLE;
 		}
-		// 20 code units from 8 ranges (spanning a search area of 65120)
+
 		TOML_UNREACHABLE;
 	}
 
@@ -6891,15 +7166,21 @@ TOML_IMPL_NAMESPACE_START
 	}
 
 	TOML_CONST_GETTER
-	constexpr bool is_vertical_whitespace(char32_t c) noexcept
+	constexpr bool is_ascii_vertical_whitespace(char32_t c) noexcept
 	{
-		return (U'\n' <= c && c <= U'\r') || (U'\u2028' <= c && c <= U'\u2029') || c == U'\x85';
+		return c >= U'\n' && c <= U'\r';
 	}
 
 	TOML_CONST_GETTER
-	constexpr bool is_vertical_whitespace_excl_cr(char32_t c) noexcept
+	constexpr bool is_non_ascii_vertical_whitespace(char32_t c) noexcept
 	{
-		return (U'\n' <= c && c <= U'\f') || (U'\u2028' <= c && c <= U'\u2029') || c == U'\x85';
+		return (U'\u2028' <= c && c <= U'\u2029') || c == U'\x85';
+	}
+
+	TOML_CONST_GETTER
+	constexpr bool is_vertical_whitespace(char32_t c) noexcept
+	{
+		return is_ascii_vertical_whitespace(c) || is_non_ascii_vertical_whitespace(c);
 	}
 
 	TOML_CONST_GETTER
@@ -6911,13 +7192,17 @@ TOML_IMPL_NAMESPACE_START
 	TOML_CONST_GETTER
 	constexpr bool is_ascii_bare_key_character(char32_t c) noexcept
 	{
+#if TOML_LANG_UNRELEASED // toml/issues/644 ('+' in bare keys)
+		if (c == U'+')
+			return true;
+#endif
+		// 64 code units from 5 ranges (spanning a search area of 78)
+
 		if (c < U'-' || c > U'z')
 			return false;
 
-		if ((1ull << (static_cast<uint_least64_t>(c) - 0x2Du)) & 0xFFF43FFFFFF01FF9ull)
-			return true;
-		return (((static_cast<uint_least64_t>(c) - 0x2Dull) / 0x40ull) != 0)
-			|| ((1ull << (static_cast<uint_least64_t>(c) - 0x2Du)) & 0xFFF43FFFFFF01FF9ull);
+		return (((static_cast<uint_least64_t>(c) - 0x2Dull) / 0x40ull) != 0ull)
+			|| ((1ull << (static_cast<uint_least64_t>(c) - 0x2Dull)) & 0xFFF43FFFFFF01FF9ull);
 	}
 
 #if TOML_LANG_UNRELEASED // toml/issues/687 (unicode bare keys)
@@ -6925,7 +7210,9 @@ TOML_IMPL_NAMESPACE_START
 	TOML_CONST_GETTER
 	constexpr bool is_non_ascii_letter(char32_t c) noexcept
 	{
-		if (U'\xAA' > c || c > U'\U0003134A')
+		// 131704 code units from 646 ranges (spanning a search area of 201377)
+
+		if (c < U'\xAA' || c > U'\U0003134A')
 			return false;
 
 		const auto child_index_0 = (static_cast<uint_least64_t>(c) - 0xAAull) / 0xC4Bull;
@@ -6937,9 +7224,11 @@ TOML_IMPL_NAMESPACE_START
 		{
 			case 0x00: // [0] 00AA - 0CF4
 			{
+				// 1957 code units from 126 ranges (spanning a search area of 3145)
+
 				if (c > U'\u0CF2')
 					return false;
-				TOML_ASSUME(U'\xAA' <= c);
+				TOML_ASSUME(c >= U'\xAA');
 
 				constexpr uint_least64_t bitmask_table_1[] = {
 					0xFFFFDFFFFFC10801u, 0xFFFFFFFFFFFFDFFFu, 0xFFFFFFFFFFFFFFFFu, 0xFFFFFFFFFFFFFFFFu,
@@ -6958,11 +7247,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xAAull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0xAAull) % 0x40ull));
-				// 1957 code units from 126 ranges (spanning a search area of 3145)
 			}
 			case 0x01: // [1] 0CF5 - 193F
 			{
-				if (U'\u0D04' > c || c > U'\u191E')
+				// 2241 code units from 82 ranges (spanning a search area of 3099)
+
+				if (c < U'\u0D04' || c > U'\u191E')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -6982,11 +7272,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xD04ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0xD04ull) % 0x40ull));
-				// 2241 code units from 82 ranges (spanning a search area of 3099)
 			}
 			case 0x02: // [2] 1940 - 258A
 			{
-				if (U'\u1950' > c || c > U'\u2184')
+				// 1185 code units from 59 ranges (spanning a search area of 2101)
+
+				if (c < U'\u1950' || c > U'\u2184')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7002,11 +7293,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x1950ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x1950ull) % 0x40ull));
-				// 1185 code units from 59 ranges (spanning a search area of 2101)
 			}
 			case 0x03: // [3] 258B - 31D5
 			{
-				if (U'\u2C00' > c || c > U'\u31BF')
+				// 773 code units from 28 ranges (spanning a search area of 1472)
+
+				if (c < U'\u2C00' || c > U'\u31BF')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7019,13 +7311,14 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x2C00ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 773 code units from 28 ranges (spanning a search area of 1472)
 			}
 			case 0x04: return (U'\u31F0' <= c && c <= U'\u31FF') || U'\u3400' <= c;
 			case 0x06: return c <= U'\u4DBF' || U'\u4E00' <= c;
 			case 0x0D: // [13] A079 - ACC3
 			{
-				TOML_ASSUME(U'\uA079' <= c && c <= U'\uACC3');
+				// 2567 code units from 54 ranges (spanning a search area of 3147)
+
+				TOML_ASSUME(c >= U'\uA079' && c <= U'\uACC3');
 
 				constexpr uint_least64_t bitmask_table_1[] = {
 					0xFFFFFFFFFFFFFFFFu, 0xFFFFFFFFFFFFFFFFu, 0xFFFFFFFFFFFFFFFFu, 0xFFFFFFFFFFFFFFFFu,
@@ -7044,13 +7337,14 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xA079ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0xA079ull) % 0x40ull));
-				// 2567 code units from 54 ranges (spanning a search area of 3147)
 			}
 			case 0x11:
 				return c <= U'\uD7A3' || (U'\uD7B0' <= c && c <= U'\uD7C6') || (U'\uD7CB' <= c && c <= U'\uD7FB');
 			case 0x14: // [20] F686 - 102D0
 			{
-				if (U'\uF900' > c)
+				// 1710 code units from 34 ranges (spanning a search area of 2513)
+
+				if (c < U'\uF900')
 					return false;
 				TOML_ASSUME(c <= U'\U000102D0');
 
@@ -7068,11 +7362,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xF900ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 1710 code units from 34 ranges (spanning a search area of 2513)
 			}
 			case 0x15: // [21] 102D1 - 10F1B
 			{
-				if (U'\U00010300' > c)
+				// 1747 code units from 59 ranges (spanning a search area of 3100)
+
+				if (c < U'\U00010300')
 					return false;
 				TOML_ASSUME(c <= U'\U00010F1B');
 
@@ -7093,13 +7388,14 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x10300ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 1747 code units from 59 ranges (spanning a search area of 3100)
 			}
 			case 0x16: // [22] 10F1C - 11B66
 			{
+				// 1174 code units from 71 ranges (spanning a search area of 3037)
+
 				if (c > U'\U00011AF8')
 					return false;
-				TOML_ASSUME(U'\U00010F1C' <= c);
+				TOML_ASSUME(c >= U'\U00010F1C');
 
 				constexpr uint_least64_t bitmask_table_1[] = {
 					0x000003FFFFF00801u, 0x0000003FFFF00000u, 0x000001FFFFF00000u, 0xFFFFFF8007FFFFF0u,
@@ -7117,11 +7413,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x10F1Cull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x10F1Cull) % 0x40ull));
-				// 1174 code units from 71 ranges (spanning a search area of 3037)
 			}
 			case 0x17: // [23] 11B67 - 127B1
 			{
-				if (U'\U00011C00' > c || c > U'\U00012543')
+				// 1304 code units from 16 ranges (spanning a search area of 2372)
+
+				if (c < U'\U00011C00' || c > U'\U00012543')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7138,14 +7435,15 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x11C00ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 1304 code units from 16 ranges (spanning a search area of 2372)
 			}
 			case 0x18: return (U'\U00012F90' <= c && c <= U'\U00012FF0') || U'\U00013000' <= c;
 			case 0x19: return c <= U'\U0001342E';
-			case 0x1A: return U'\U00014400' <= c && c <= U'\U00014646';
+			case 0x1A: return c >= U'\U00014400' && c <= U'\U00014646';
 			case 0x1D: // [29] 16529 - 17173
 			{
-				if (U'\U00016800' > c)
+				// 1329 code units from 15 ranges (spanning a search area of 2420)
+
+				if (c < U'\U00016800')
 					return false;
 				TOML_ASSUME(c <= U'\U00017173');
 
@@ -7163,13 +7461,14 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x16800ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 1329 code units from 15 ranges (spanning a search area of 2420)
 			}
 			case 0x1F: return c <= U'\U000187F7' || U'\U00018800' <= c;
 			case 0x20: return c <= U'\U00018CD5' || (U'\U00018D00' <= c && c <= U'\U00018D08');
 			case 0x23: // [35] 1AEEB - 1BB35
 			{
-				if (U'\U0001AFF0' > c || c > U'\U0001B2FB')
+				// 707 code units from 7 ranges (spanning a search area of 780)
+
+				if (c < U'\U0001AFF0' || c > U'\U0001B2FB')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7180,27 +7479,30 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x1AFF0ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x1AFF0ull) % 0x40ull));
-				// 707 code units from 7 ranges (spanning a search area of 780)
 			}
 			case 0x24: // [36] 1BB36 - 1C780
 			{
-				if (U'\U0001BC00' > c || c > U'\U0001BC99')
+				// 139 code units from 4 ranges (spanning a search area of 154)
+
+				if (c < U'\U0001BC00' || c > U'\U0001BC99')
 					return false;
 
 				switch ((static_cast<uint_least64_t>(c) - 0x1BC00ull) / 0x40ull)
 				{
 					case 0x01:
 						return c <= U'\U0001BC7C'
-							&& (1ull << (static_cast<uint_least64_t>(c) - 0x1BC40u)) & 0x1FFF07FFFFFFFFFFull;
+							&& (1ull << (static_cast<uint_least64_t>(c) - 0x1BC40ull)) & 0x1FFF07FFFFFFFFFFull;
 					case 0x02: return (1u << (static_cast<uint_least32_t>(c) - 0x1BC80u)) & 0x3FF01FFu;
 					default: return true;
 				}
-				// 139 code units from 4 ranges (spanning a search area of 154)
+
 				TOML_UNREACHABLE;
 			}
 			case 0x26: // [38] 1D3CC - 1E016
 			{
-				if (U'\U0001D400' > c || c > U'\U0001DF1E')
+				// 967 code units from 31 ranges (spanning a search area of 2847)
+
+				if (c < U'\U0001D400' || c > U'\U0001DF1E')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7219,11 +7521,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x1D400ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 967 code units from 31 ranges (spanning a search area of 2847)
 			}
 			case 0x27: // [39] 1E017 - 1EC61
 			{
-				if (U'\U0001E100' > c || c > U'\U0001E94B')
+				// 421 code units from 12 ranges (spanning a search area of 2124)
+
+				if (c < U'\U0001E100' || c > U'\U0001E94B')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7239,44 +7542,47 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x1E100ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 421 code units from 12 ranges (spanning a search area of 2124)
 			}
 			case 0x28: // [40] 1EC62 - 1F8AC
 			{
-				if (U'\U0001EE00' > c || c > U'\U0001EEBB')
+				// 141 code units from 33 ranges (spanning a search area of 188)
+
+				if (c < U'\U0001EE00' || c > U'\U0001EEBB')
 					return false;
 
 				switch ((static_cast<uint_least64_t>(c) - 0x1EE00ull) / 0x40ull)
 				{
 					case 0x00:
 						return c <= U'\U0001EE3B'
-							&& (1ull << (static_cast<uint_least64_t>(c) - 0x1EE00u)) & 0xAF7FE96FFFFFFEFull;
+							&& (1ull << (static_cast<uint_least64_t>(c) - 0x1EE00ull)) & 0xAF7FE96FFFFFFEFull;
 					case 0x01:
-						return U'\U0001EE42' <= c && c <= U'\U0001EE7E'
-							&& (1ull << (static_cast<uint_least64_t>(c) - 0x1EE42u)) & 0x17BDFDE5AAA5BAA1ull;
-					case 0x02: return (1ull << (static_cast<uint_least64_t>(c) - 0x1EE80u)) & 0xFFFFBEE0FFFFBFFull;
+						return c >= U'\U0001EE42' && c <= U'\U0001EE7E'
+							&& (1ull << (static_cast<uint_least64_t>(c) - 0x1EE42ull)) & 0x17BDFDE5AAA5BAA1ull;
+					case 0x02: return (1ull << (static_cast<uint_least64_t>(c) - 0x1EE80ull)) & 0xFFFFBEE0FFFFBFFull;
 					default: TOML_UNREACHABLE;
 				}
-				// 141 code units from 33 ranges (spanning a search area of 188)
+
 				TOML_UNREACHABLE;
 			}
-			case 0x29: return U'\U00020000' <= c;
+			case 0x29: return c >= U'\U00020000';
 			case 0x37: return c <= U'\U0002A6DF' || U'\U0002A700' <= c;
 			case 0x38: return c <= U'\U0002B738' || (U'\U0002B740' <= c && c <= U'\U0002B81D') || U'\U0002B820' <= c;
 			case 0x3A: return c <= U'\U0002CEA1' || U'\U0002CEB0' <= c;
 			case 0x3C: return c <= U'\U0002EBE0';
-			case 0x3D: return U'\U0002F800' <= c && c <= U'\U0002FA1D';
-			case 0x3E: return U'\U00030000' <= c;
+			case 0x3D: return c >= U'\U0002F800' && c <= U'\U0002FA1D';
+			case 0x3E: return c >= U'\U00030000';
 			default: TOML_UNREACHABLE;
 		}
-		// 131704 code units from 646 ranges (spanning a search area of 201377)
+
 		TOML_UNREACHABLE;
 	}
 
 	TOML_CONST_GETTER
 	constexpr bool is_non_ascii_number(char32_t c) noexcept
 	{
-		if (U'\u0660' > c || c > U'\U0001FBF9')
+		// 886 code units from 73 ranges (spanning a search area of 128410)
+
+		if (c < U'\u0660' || c > U'\U0001FBF9')
 			return false;
 
 		const auto child_index_0 = (static_cast<uint_least64_t>(c) - 0x660ull) / 0x7D7ull;
@@ -7286,9 +7592,11 @@ TOML_IMPL_NAMESPACE_START
 		{
 			case 0x00: // [0] 0660 - 0E36
 			{
+				// 130 code units from 13 ranges (spanning a search area of 1936)
+
 				if (c > U'\u0DEF')
 					return false;
-				TOML_ASSUME(U'\u0660' <= c);
+				TOML_ASSUME(c >= U'\u0660');
 
 				constexpr uint_least64_t bitmask_table_1[] = {
 					0x00000000000003FFu, 0x0000000000000000u, 0x0000000003FF0000u, 0x0000000000000000u,
@@ -7302,11 +7610,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x660ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x660ull) % 0x40ull));
-				// 130 code units from 13 ranges (spanning a search area of 1936)
 			}
 			case 0x01: // [1] 0E37 - 160D
 			{
-				if (U'\u0E50' > c || c > U'\u1099')
+				// 50 code units from 5 ranges (spanning a search area of 586)
+
+				if (c < U'\u0E50' || c > U'\u1099')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7316,11 +7625,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xE50ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0xE50ull) % 0x40ull));
-				// 50 code units from 5 ranges (spanning a search area of 586)
 			}
 			case 0x02: // [2] 160E - 1DE4
 			{
-				if (U'\u16EE' > c || c > U'\u1C59')
+				// 103 code units from 11 ranges (spanning a search area of 1388)
+
+				if (c < U'\u16EE' || c > U'\u1C59')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7333,17 +7643,15 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x16EEull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x16EEull) % 0x40ull));
-				// 103 code units from 11 ranges (spanning a search area of 1388)
 			}
-			case 0x03:
-				return U'\u2160' <= c && c <= U'\u2188'
-					&& (1ull << (static_cast<uint_least64_t>(c) - 0x2160u)) & 0x1E7FFFFFFFFull;
+			case 0x03: return (U'\u2160' <= c && c <= U'\u2182') || (U'\u2185' <= c && c <= U'\u2188');
 			case 0x05:
-				return U'\u3007' <= c && c <= U'\u303A'
-					&& (1ull << (static_cast<uint_least64_t>(c) - 0x3007u)) & 0xE0007FC000001ull;
+				return (U'\u3021' <= c && c <= U'\u3029') || (U'\u3038' <= c && c <= U'\u303A') || c == U'\u3007';
 			case 0x14: // [20] A32C - AB02
 			{
-				if (U'\uA620' > c || c > U'\uAA59')
+				// 70 code units from 7 ranges (spanning a search area of 1082)
+
+				if (c < U'\uA620' || c > U'\uAA59')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7355,15 +7663,16 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xA620ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0xA620ull) % 0x40ull));
-				// 70 code units from 7 ranges (spanning a search area of 1082)
 			}
-			case 0x15: return U'\uABF0' <= c && c <= U'\uABF9';
-			case 0x1F: return U'\uFF10' <= c && c <= U'\uFF19';
+			case 0x15: return c >= U'\uABF0' && c <= U'\uABF9';
+			case 0x1F: return c >= U'\uFF10' && c <= U'\uFF19';
 			case 0x20: // [32] 10140 - 10916
 			{
+				// 70 code units from 5 ranges (spanning a search area of 874)
+
 				if (c > U'\U000104A9')
 					return false;
-				TOML_ASSUME(U'\U00010140' <= c);
+				TOML_ASSUME(c >= U'\U00010140');
 
 				constexpr uint_least64_t bitmask_table_1[] = {
 					0x001FFFFFFFFFFFFFu, 0x0000000000000000u, 0x0000000000000000u, 0x0000000000000000u,
@@ -7373,12 +7682,13 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x10140ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 70 code units from 5 ranges (spanning a search area of 874)
 			}
 			case 0x21: return (U'\U00010D30' <= c && c <= U'\U00010D39') || (U'\U00011066' <= c && c <= U'\U0001106F');
 			case 0x22: // [34] 110EE - 118C4
 			{
-				if (U'\U000110F0' > c || c > U'\U00011739')
+				// 90 code units from 9 ranges (spanning a search area of 1610)
+
+				if (c < U'\U000110F0' || c > U'\U00011739')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7392,11 +7702,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x110F0ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x110F0ull) % 0x40ull));
-				// 90 code units from 9 ranges (spanning a search area of 1610)
 			}
 			case 0x23: // [35] 118C5 - 1209B
 			{
-				if (U'\U000118E0' > c || c > U'\U00011DA9')
+				// 50 code units from 5 ranges (spanning a search area of 1226)
+
+				if (c < U'\U000118E0' || c > U'\U00011DA9')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7408,26 +7719,27 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x118E0ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x118E0ull) % 0x40ull));
-				// 50 code units from 5 ranges (spanning a search area of 1226)
 			}
-			case 0x24: return U'\U00012400' <= c && c <= U'\U0001246E';
+			case 0x24: return c >= U'\U00012400' && c <= U'\U0001246E';
 			case 0x2D:
 				return (U'\U00016A60' <= c && c <= U'\U00016A69') || (U'\U00016AC0' <= c && c <= U'\U00016AC9')
 					|| (U'\U00016B50' <= c && c <= U'\U00016B59');
-			case 0x3B: return U'\U0001D7CE' <= c && c <= U'\U0001D7FF';
+			case 0x3B: return c >= U'\U0001D7CE' && c <= U'\U0001D7FF';
 			case 0x3C: return (U'\U0001E140' <= c && c <= U'\U0001E149') || (U'\U0001E2F0' <= c && c <= U'\U0001E2F9');
-			case 0x3D: return U'\U0001E950' <= c && c <= U'\U0001E959';
-			case 0x3F: return U'\U0001FBF0' <= c;
+			case 0x3D: return c >= U'\U0001E950' && c <= U'\U0001E959';
+			case 0x3F: return c >= U'\U0001FBF0';
 			default: TOML_UNREACHABLE;
 		}
-		// 886 code units from 73 ranges (spanning a search area of 128410)
+
 		TOML_UNREACHABLE;
 	}
 
 	TOML_CONST_GETTER
 	constexpr bool is_combining_mark(char32_t c) noexcept
 	{
-		if (U'\u0300' > c || c > U'\U000E01EF')
+		// 2395 code units from 302 ranges (spanning a search area of 917232)
+
+		if (c < U'\u0300' || c > U'\U000E01EF')
 			return false;
 
 		const auto child_index_0 = (static_cast<uint_least64_t>(c) - 0x300ull) / 0x37FCull;
@@ -7437,9 +7749,11 @@ TOML_IMPL_NAMESPACE_START
 		{
 			case 0x00: // [0] 0300 - 3AFB
 			{
+				// 1141 code units from 158 ranges (spanning a search area of 11675)
+
 				if (c > U'\u309A')
 					return false;
-				TOML_ASSUME(U'\u0300' <= c);
+				TOML_ASSUME(c >= U'\u0300');
 
 				constexpr uint_least64_t bitmask_table_1[] = {
 					0xFFFFFFFFFFFFFFFFu, 0x0000FFFFFFFFFFFFu, 0x0000000000000000u, 0x0000000000000000u,
@@ -7491,11 +7805,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x300ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 1141 code units from 158 ranges (spanning a search area of 11675)
 			}
 			case 0x02: // [2] 72F8 - AAF3
 			{
-				if (U'\uA66F' > c || c > U'\uAAEF')
+				// 137 code units from 28 ranges (spanning a search area of 1153)
+
+				if (c < U'\uA66F' || c > U'\uAAEF')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7507,14 +7822,15 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xA66Full) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0xA66Full) % 0x40ull));
-				// 137 code units from 28 ranges (spanning a search area of 1153)
 			}
 			case 0x03:
 				return (U'\uAAF5' <= c && c <= U'\uAAF6') || (U'\uABE3' <= c && c <= U'\uABEA')
 					|| (U'\uABEC' <= c && c <= U'\uABED');
 			case 0x04: // [4] E2F0 - 11AEB
 			{
-				if (U'\uFB1E' > c || c > U'\U00011A99')
+				// 410 code units from 67 ranges (spanning a search area of 8060)
+
+				if (c < U'\uFB1E' || c > U'\U00011A99')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7553,11 +7869,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0xFB1Eull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0xFB1Eull) % 0x40ull));
-				// 410 code units from 67 ranges (spanning a search area of 8060)
 			}
 			case 0x05: // [5] 11AEC - 152E7
 			{
-				if (U'\U00011C2F' > c || c > U'\U00011EF6')
+				// 85 code units from 13 ranges (spanning a search area of 712)
+
+				if (c < U'\U00011C2F' || c > U'\U00011EF6')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7567,11 +7884,12 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x11C2Full) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x11C2Full) % 0x40ull));
-				// 85 code units from 13 ranges (spanning a search area of 712)
 			}
 			case 0x06: // [6] 152E8 - 18AE3
 			{
-				if (U'\U00016AF0' > c || c > U'\U00016FF1')
+				// 75 code units from 7 ranges (spanning a search area of 1282)
+
+				if (c < U'\U00016AF0' || c > U'\U00016FF1')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7584,12 +7902,13 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x16AF0ull) / 0x40ull]
 					 & (0x1ull << ((static_cast<uint_least64_t>(c) - 0x16AF0ull) % 0x40ull));
-				// 75 code units from 7 ranges (spanning a search area of 1282)
 			}
-			case 0x07: return U'\U0001BC9D' <= c && c <= U'\U0001BC9E';
+			case 0x07: return c >= U'\U0001BC9D' && c <= U'\U0001BC9E';
 			case 0x08: // [8] 1C2E0 - 1FADB
 			{
-				if (U'\U0001CF00' > c || c > U'\U0001E94A')
+				// 293 code units from 24 ranges (spanning a search area of 6731)
+
+				if (c < U'\U0001CF00' || c > U'\U0001E94A')
 					return false;
 
 				constexpr uint_least64_t bitmask_table_1[] = {
@@ -7623,12 +7942,11 @@ TOML_IMPL_NAMESPACE_START
 				};
 				return bitmask_table_1[(static_cast<uint_least64_t>(c) - 0x1CF00ull) / 0x40ull]
 					 & (0x1ull << (static_cast<uint_least64_t>(c) % 0x40ull));
-				// 293 code units from 24 ranges (spanning a search area of 6731)
 			}
-			case 0x3F: return U'\U000E0100' <= c;
+			case 0x3F: return c >= U'\U000E0100';
 			default: TOML_UNREACHABLE;
 		}
-		// 2395 code units from 302 ranges (spanning a search area of 917232)
+
 		TOML_UNREACHABLE;
 	}
 
@@ -7639,13 +7957,85 @@ TOML_IMPL_NAMESPACE_START
 	}
 
 #endif // TOML_LANG_UNRELEASED
+}
+TOML_IMPL_NAMESPACE_END;
+
+#if TOML_GCC && TOML_GCC < 9
+#pragma GCC pop_options
+#endif
+
+#ifdef _MSC_VER
+#pragma pop_macro("min")
+#pragma pop_macro("max")
+#endif
+TOML_POP_WARNINGS;
+
+//********  impl/unicode.h  ********************************************************************************************
+
+TOML_PUSH_WARNINGS;
+#ifdef _MSC_VER
+#pragma push_macro("min")
+#pragma push_macro("max")
+#undef min
+#undef max
+#endif
+
+TOML_IMPL_NAMESPACE_START
+{
+	TOML_CONST_GETTER
+	constexpr bool is_string_delimiter(char32_t c) noexcept
+	{
+		return c == U'"' || c == U'\'';
+	}
+
+	TOML_CONST_GETTER
+	constexpr bool is_ascii_letter(char32_t c) noexcept
+	{
+		return (c >= U'a' && c <= U'z') || (c >= U'A' && c <= U'Z');
+	}
+
+	TOML_CONST_GETTER
+	constexpr bool is_binary_digit(char32_t c) noexcept
+	{
+		return c == U'0' || c == U'1';
+	}
+
+	TOML_CONST_GETTER
+	constexpr bool is_octal_digit(char32_t c) noexcept
+	{
+		return (c >= U'0' && c <= U'7');
+	}
+
+	TOML_CONST_GETTER
+	constexpr bool is_decimal_digit(char32_t c) noexcept
+	{
+		return (c >= U'0' && c <= U'9');
+	}
+
+	TOML_CONST_GETTER
+	constexpr bool is_hexadecimal_digit(char32_t c) noexcept
+	{
+		return U'0' <= c && c <= U'f' && (1ull << (static_cast<uint_least64_t>(c) - 0x30u)) & 0x7E0000007E03FFull;
+	}
+
+	template <typename T>
+	TOML_CONST_GETTER
+	constexpr uint_least32_t hex_to_dec(const T c) noexcept
+	{
+		if constexpr (std::is_same_v<remove_cvref<T>, uint_least32_t>)
+			return c >= 0x41u					 // >= 'A'
+					 ? 10u + (c | 0x20u) - 0x61u // - 'a'
+					 : c - 0x30u				 // - '0'
+				;
+		else
+			return hex_to_dec(static_cast<uint_least32_t>(c));
+	}
 
 	TOML_CONST_GETTER
 	constexpr bool is_bare_key_character(char32_t c) noexcept
 	{
 		return is_ascii_bare_key_character(c)
-#if TOML_LANG_UNRELEASED // toml/issues/644 ('+' in bare keys) & toml/issues/687 (unicode bare keys)
-			|| c == U'+' //
+#if TOML_LANG_UNRELEASED // toml/issues/687 (unicode bare keys)
 			|| is_non_ascii_bare_key_character(c)
 #endif
 			;
@@ -7655,6 +8045,12 @@ TOML_IMPL_NAMESPACE_START
 	constexpr bool is_value_terminator(char32_t c) noexcept
 	{
 		return is_whitespace(c) || c == U']' || c == U'}' || c == U',' || c == U'#';
+	}
+
+	TOML_CONST_GETTER
+	constexpr bool is_control_character(char c) noexcept
+	{
+		return c <= '\u001F' || c == '\u007F';
 	}
 
 	TOML_CONST_GETTER
@@ -7720,7 +8116,7 @@ TOML_IMPL_NAMESPACE_START
 
 		constexpr void operator()(uint8_t byte) noexcept
 		{
-			TOML_ASSERT(!error());
+			TOML_ASSERT_ASSUME(!error());
 
 			const auto type = state_table[byte];
 
@@ -7732,17 +8128,23 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_ALWAYS_INLINE
+		constexpr void operator()(char c) noexcept
+		{
+			operator()(static_cast<uint8_t>(c));
+		}
+
+		TOML_ALWAYS_INLINE
 		constexpr void reset() noexcept
 		{
 			state = {};
 		}
 	};
+
+	TOML_PURE_GETTER
+	TOML_ATTR(nonnull)
+	bool is_ascii(const char* str, size_t len) noexcept;
 }
 TOML_IMPL_NAMESPACE_END;
-
-#if TOML_GCC && TOML_GCC < 9
-#pragma GCC pop_options
-#endif
 
 #ifdef _MSC_VER
 #pragma pop_macro("min")
@@ -7917,106 +8319,6 @@ TOML_NAMESPACE_START
 
 	  public:
 
-		using iterator = table_iterator;
-
-		using const_iterator = const_table_iterator;
-
-		TOML_NODISCARD
-		bool succeeded() const noexcept
-		{
-			return !err_;
-		}
-
-		TOML_NODISCARD
-		bool failed() const noexcept
-		{
-			return err_;
-		}
-
-		TOML_NODISCARD
-		explicit operator bool() const noexcept
-		{
-			return !err_;
-		}
-
-		TOML_NODISCARD
-		toml::table& table() & noexcept
-		{
-			TOML_ASSERT(!err_);
-			return *get_as<toml::table>(storage_);
-		}
-
-		TOML_NODISCARD
-		toml::table&& table() && noexcept
-		{
-			TOML_ASSERT(!err_);
-			return static_cast<toml::table&&>(*get_as<toml::table>(storage_));
-		}
-
-		TOML_NODISCARD
-		const toml::table& table() const& noexcept
-		{
-			TOML_ASSERT(!err_);
-			return *get_as<const toml::table>(storage_);
-		}
-
-		TOML_NODISCARD
-		parse_error& error() & noexcept
-		{
-			TOML_ASSERT(err_);
-			return *get_as<parse_error>(storage_);
-		}
-
-		TOML_NODISCARD
-		parse_error&& error() && noexcept
-		{
-			TOML_ASSERT(err_);
-			return static_cast<parse_error&&>(*get_as<parse_error>(storage_));
-		}
-
-		TOML_NODISCARD
-		const parse_error& error() const& noexcept
-		{
-			TOML_ASSERT(err_);
-			return *get_as<const parse_error>(storage_);
-		}
-
-		TOML_NODISCARD
-		operator toml::table&() noexcept
-		{
-			return table();
-		}
-
-		TOML_NODISCARD
-		operator toml::table&&() noexcept
-		{
-			return std::move(table());
-		}
-
-		TOML_NODISCARD
-		operator const toml::table&() const noexcept
-		{
-			return table();
-		}
-
-		TOML_NODISCARD
-		explicit operator parse_error&() noexcept
-		{
-			return error();
-		}
-
-		TOML_NODISCARD
-		explicit operator parse_error&&() noexcept
-		{
-			return std::move(error());
-		}
-
-		TOML_NODISCARD
-		explicit operator const parse_error&() const noexcept
-		{
-			return error();
-		}
-
 		TOML_NODISCARD_CTOR
 		parse_result() noexcept //
 			: err_{ true }
@@ -8075,32 +8377,104 @@ TOML_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
-		node_view<node> operator[](std::string_view key) noexcept
+		bool succeeded() const noexcept
 		{
-			return err_ ? node_view<node>{} : table()[key];
+			return !err_;
 		}
 
 		TOML_NODISCARD
-		node_view<const node> operator[](std::string_view key) const noexcept
+		bool failed() const noexcept
 		{
-			return err_ ? node_view<const node>{} : table()[key];
-		}
-
-#if TOML_ENABLE_WINDOWS_COMPAT
-
-		TOML_NODISCARD
-		node_view<node> operator[](std::wstring_view key) noexcept
-		{
-			return err_ ? node_view<node>{} : table()[key];
+			return err_;
 		}
 
 		TOML_NODISCARD
-		node_view<const node> operator[](std::wstring_view key) const noexcept
+		explicit operator bool() const noexcept
 		{
-			return err_ ? node_view<const node>{} : table()[key];
+			return !err_;
 		}
 
-#endif // TOML_ENABLE_WINDOWS_COMPAT
+		TOML_NODISCARD
+		toml::table& table() & noexcept
+		{
+			TOML_ASSERT_ASSUME(!err_);
+			return *get_as<toml::table>(storage_);
+		}
+
+		TOML_NODISCARD
+		toml::table&& table() && noexcept
+		{
+			TOML_ASSERT_ASSUME(!err_);
+			return static_cast<toml::table&&>(*get_as<toml::table>(storage_));
+		}
+
+		TOML_NODISCARD
+		const toml::table& table() const& noexcept
+		{
+			TOML_ASSERT_ASSUME(!err_);
+			return *get_as<const toml::table>(storage_);
+		}
+
+		TOML_NODISCARD
+		/* implicit */ operator toml::table&() noexcept
+		{
+			return table();
+		}
+
+		TOML_NODISCARD
+		/* implicit */ operator toml::table&&() noexcept
+		{
+			return std::move(table());
+		}
+
+		TOML_NODISCARD
+		/* implicit */ operator const toml::table&() const noexcept
+		{
+			return table();
+		}
+
+		TOML_NODISCARD
+		parse_error& error() & noexcept
+		{
+			TOML_ASSERT_ASSUME(err_);
+			return *get_as<parse_error>(storage_);
+		}
+
+		TOML_NODISCARD
+		parse_error&& error() && noexcept
+		{
+			TOML_ASSERT_ASSUME(err_);
+			return static_cast<parse_error&&>(*get_as<parse_error>(storage_));
+		}
+
+		TOML_NODISCARD
+		const parse_error& error() const& noexcept
+		{
+			TOML_ASSERT_ASSUME(err_);
+			return *get_as<const parse_error>(storage_);
+		}
+
+		TOML_NODISCARD
+		explicit operator parse_error&() noexcept
+		{
+			return error();
+		}
+
+		TOML_NODISCARD
+		explicit operator parse_error&&() noexcept
+		{
+			return std::move(error());
+		}
+
+		TOML_NODISCARD
+		explicit operator const parse_error&() const noexcept
+		{
+			return error();
+		}
+
+		using iterator = table_iterator;
+
+		using const_iterator = const_table_iterator;
 
 		TOML_NODISCARD
 		table_iterator begin() noexcept
@@ -8137,6 +8511,58 @@ TOML_NAMESPACE_START
 		{
 			return err_ ? const_table_iterator{} : table().cend();
 		}
+
+		TOML_NODISCARD
+		node_view<node> operator[](std::string_view key) noexcept
+		{
+			return err_ ? node_view<node>{} : table()[key];
+		}
+
+		TOML_NODISCARD
+		node_view<const node> operator[](std::string_view key) const noexcept
+		{
+			return err_ ? node_view<const node>{} : table()[key];
+		}
+
+		TOML_NODISCARD
+		node_view<node> at_path(std::string_view path) noexcept
+		{
+			return err_ ? node_view<node>{} : table().at_path(path);
+		}
+
+		TOML_NODISCARD
+		node_view<const node> at_path(std::string_view path) const noexcept
+		{
+			return err_ ? node_view<const node>{} : table().at_path(path);
+		}
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+		TOML_NODISCARD
+		node_view<node> operator[](std::wstring_view key) noexcept
+		{
+			return err_ ? node_view<node>{} : table()[key];
+		}
+
+		TOML_NODISCARD
+		node_view<const node> operator[](std::wstring_view key) const noexcept
+		{
+			return err_ ? node_view<const node>{} : table()[key];
+		}
+
+		TOML_NODISCARD
+		node_view<node> at_path(std::wstring_view path) noexcept
+		{
+			return err_ ? node_view<node>{} : table().at_path(path);
+		}
+
+		TOML_NODISCARD
+		node_view<const node> at_path(std::wstring_view path) const noexcept
+		{
+			return err_ ? node_view<const node>{} : table().at_path(path);
+		}
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
 
 #if TOML_ENABLE_FORMATTERS
 
@@ -8177,29 +8603,29 @@ TOML_NAMESPACE_START
 	TOML_ABI_NAMESPACE_BOOL(TOML_EXCEPTIONS, ex, noex);
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::string_view doc, std::string_view source_path = {});
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::string_view doc, std::string && source_path);
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse_file(std::string_view file_path);
 
 #if TOML_HAS_CHAR8
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::u8string_view doc, std::string_view source_path = {});
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::u8string_view doc, std::string && source_path);
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse_file(std::u8string_view file_path);
 
 #endif // TOML_HAS_CHAR8
@@ -8207,15 +8633,15 @@ TOML_NAMESPACE_START
 #if TOML_ENABLE_WINDOWS_COMPAT
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::string_view doc, std::wstring_view source_path);
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::istream & doc, std::wstring_view source_path);
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse_file(std::wstring_view file_path);
 
 #endif // TOML_ENABLE_WINDOWS_COMPAT
@@ -8223,17 +8649,17 @@ TOML_NAMESPACE_START
 #if TOML_HAS_CHAR8 && TOML_ENABLE_WINDOWS_COMPAT
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::u8string_view doc, std::wstring_view source_path);
 
 #endif // TOML_HAS_CHAR8 && TOML_ENABLE_WINDOWS_COMPAT
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::istream & doc, std::string_view source_path = {});
 
 	TOML_NODISCARD
-	TOML_API
+	TOML_EXPORTED_FREE_FUNCTION
 	parse_result parse(std::istream & doc, std::string && source_path);
 
 	TOML_ABI_NAMESPACE_END; // TOML_EXCEPTIONS
@@ -8304,7 +8730,7 @@ TOML_IMPL_NAMESPACE_START
 		std::string_view indent;
 	};
 
-	class formatter
+	class TOML_EXPORTED_CLASS formatter
 	{
 	  private:
 		const node* source_;
@@ -8377,57 +8803,75 @@ TOML_IMPL_NAMESPACE_START
 			return !!(config_.flags & format_flags::allow_literal_strings);
 		}
 
-		TOML_API
+		TOML_PURE_INLINE_GETTER
+		bool multi_line_strings_allowed() const noexcept
+		{
+			return !!(config_.flags & format_flags::allow_multi_line_strings);
+		}
+
+		TOML_PURE_INLINE_GETTER
+		bool real_tabs_in_strings_allowed() const noexcept
+		{
+			return !!(config_.flags & format_flags::allow_real_tabs_in_strings);
+		}
+
+		TOML_PURE_INLINE_GETTER
+		bool unicode_strings_allowed() const noexcept
+		{
+			return !!(config_.flags & format_flags::allow_unicode_strings);
+		}
+
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void attach(std::ostream& stream) noexcept;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void detach() noexcept;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_newline(bool force = false);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_indent();
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_unformatted(char);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_unformatted(std::string_view);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_string(std::string_view str, bool allow_multi_line = true, bool allow_bare = false);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const value<std::string>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const value<int64_t>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const value<double>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const value<bool>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const value<date>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const value<time>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const value<date_time>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_value(const node&, node_type);
 
 		TOML_NODISCARD
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		bool dump_failed_parse_result();
 
 		TOML_NODISCARD_CTOR
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		formatter(const node*, const parse_result*, const formatter_constants&, const formatter_config&) noexcept;
 	};
 }
@@ -8455,7 +8899,7 @@ TOML_PUSH_WARNINGS;
 
 TOML_NAMESPACE_START
 {
-	class toml_formatter : impl::formatter
+	class TOML_EXPORTED_CLASS toml_formatter : impl::formatter
 	{
 	  private:
 
@@ -8463,26 +8907,26 @@ TOML_NAMESPACE_START
 		std::vector<const key*> key_path_;
 		bool pending_table_separator_ = false;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_pending_table_separator();
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const key&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_inline(const toml::table&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const toml::array&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const toml::table&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print();
 
-		static constexpr impl::formatter_constants constants = { format_flags::none, // mandatory flags
-																 format_flags::none, // ignored flags
+		static constexpr impl::formatter_constants constants = { format_flags::none, // mandatory
+																 format_flags::none, // ignored
 																 "inf"sv,
 																 "-inf"sv,
 																 "nan"sv,
@@ -8494,6 +8938,7 @@ TOML_NAMESPACE_START
 		static constexpr format_flags default_flags = constants.mandatory_flags				   //
 													| format_flags::allow_literal_strings	   //
 													| format_flags::allow_multi_line_strings   //
+													| format_flags::allow_unicode_strings	   //
 													| format_flags::allow_real_tabs_in_strings //
 													| format_flags::allow_binary_integers	   //
 													| format_flags::allow_octal_integers	   //
@@ -8553,19 +8998,19 @@ TOML_PUSH_WARNINGS;
 
 TOML_NAMESPACE_START
 {
-	class json_formatter : impl::formatter
+	class TOML_EXPORTED_CLASS json_formatter : impl::formatter
 	{
 	  private:
 
 		using base = impl::formatter;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const toml::table&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const toml::array&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print();
 
 		static constexpr impl::formatter_constants constants = {
@@ -8582,6 +9027,7 @@ TOML_NAMESPACE_START
 
 		static constexpr format_flags default_flags = constants.mandatory_flags				  //
 													| format_flags::quote_infinities_and_nans //
+													| format_flags::allow_unicode_strings	  //
 													| format_flags::indentation;
 
 		TOML_NODISCARD_CTOR
@@ -8636,22 +9082,22 @@ TOML_PUSH_WARNINGS;
 
 TOML_NAMESPACE_START
 {
-	class yaml_formatter : impl::formatter
+	class TOML_EXPORTED_CLASS yaml_formatter : impl::formatter
 	{
 	  private:
 
 		using base = impl::formatter;
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print_yaml_string(const value<std::string>&);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const toml::table&, bool = false);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print(const toml::array&, bool = false);
 
-		TOML_API
+		TOML_EXPORTED_MEMBER_FUNCTION
 		void print();
 
 		static constexpr impl::formatter_constants constants = {
@@ -8669,6 +9115,7 @@ TOML_NAMESPACE_START
 
 		static constexpr format_flags default_flags = constants.mandatory_flags			  //
 													| format_flags::allow_literal_strings //
+													| format_flags::allow_unicode_strings //
 													| format_flags::allow_octal_integers  //
 													| format_flags::allow_hexadecimal_integers;
 
@@ -8865,18 +9312,23 @@ TOML_ANON_NAMESPACE_START
 	inline constexpr size_t charconv_buffer_length<uint64_t> = 20; // strlen("18446744073709551615")
 
 	template <>
-	inline constexpr size_t charconv_buffer_length<float> = 40;
+	inline constexpr size_t charconv_buffer_length<float> = 64;
 
 	template <>
-	inline constexpr size_t charconv_buffer_length<double> = 60;
+	inline constexpr size_t charconv_buffer_length<double> = 64;
 
 	template <typename T>
 	TOML_INTERNAL_LINKAGE
-	void print_integer_to_stream(std::ostream & stream, T val, value_flags format = {})
+	void print_integer_to_stream(std::ostream & stream, T val, value_flags format = {}, size_t min_digits = 0)
 	{
 		if (!val)
 		{
-			stream.put('0');
+			if (!min_digits)
+				min_digits = 1;
+
+			for (size_t i = 0; i < min_digits; i++)
+				stream.put('0');
+
 			return;
 		}
 
@@ -8885,7 +9337,7 @@ TOML_ANON_NAMESPACE_START
 		format &= value_flags_mask;
 
 		int base = 10;
-		if (format != value_flags::none && val >= T{})
+		if (format != value_flags::none && val > T{})
 		{
 			switch (format)
 			{
@@ -8901,6 +9353,8 @@ TOML_ANON_NAMESPACE_START
 		char buf[(sizeof(T) * CHAR_BIT)];
 		const auto res = std::to_chars(buf, buf + sizeof(buf), val, base);
 		const auto len = static_cast<size_t>(res.ptr - buf);
+		for (size_t i = len; i < min_digits; i++)
+			stream.put('0');
 		if (base == 16)
 		{
 			for (size_t i = 0; i < len; i++)
@@ -8914,12 +9368,16 @@ TOML_ANON_NAMESPACE_START
 		using unsigned_type = std::conditional_t<(sizeof(T) > sizeof(unsigned)), std::make_unsigned_t<T>, unsigned>;
 		using cast_type		= std::conditional_t<std::is_signed_v<T>, std::make_signed_t<unsigned_type>, unsigned_type>;
 
-		if TOML_UNLIKELY(format == value_flags::format_as_binary)
+		if (base == 2)
 		{
+			const auto len = sizeof(T) * CHAR_BIT;
+			for (size_t i = len; i < min_digits; i++)
+				stream.put('0');
+
 			bool found_one	   = false;
 			const auto v	   = static_cast<unsigned_type>(val);
-			unsigned_type mask = unsigned_type{ 1 } << (sizeof(unsigned_type) * CHAR_BIT - 1u);
-			for (unsigned i = 0; i < sizeof(unsigned_type) * CHAR_BIT; i++)
+			unsigned_type mask = unsigned_type{ 1 } << (len - 1u);
+			for (size_t i = 0; i < len; i++)
 			{
 				if ((v & mask))
 				{
@@ -8936,6 +9394,8 @@ TOML_ANON_NAMESPACE_START
 			std::ostringstream ss;
 			ss.imbue(std::locale::classic());
 			ss << std::uppercase << std::setbase(base);
+			if (min_digits)
+				ss << std::setfill('0') << std::setw(static_cast<int>(min_digits));
 			ss << static_cast<cast_type>(val);
 			const auto str = std::move(ss).str();
 			impl::print_to_stream(stream, str);
@@ -8946,7 +9406,10 @@ TOML_ANON_NAMESPACE_START
 
 	template <typename T>
 	TOML_INTERNAL_LINKAGE
-	void print_floating_point_to_stream(std::ostream & stream, T val, value_flags format = {})
+	void print_floating_point_to_stream(std::ostream & stream,
+										T val,
+										value_flags format,
+										[[maybe_unused]] bool relaxed_precision)
 	{
 		switch (impl::fpclassify(val))
 		{
@@ -8968,20 +9431,31 @@ TOML_ANON_NAMESPACE_START
 
 #if TOML_FLOAT_CHARCONV
 
+				const auto hex = !!(format & value_flags::format_as_hexadecimal);
 				char buf[charconv_buffer_length<T>];
-				const auto res = !!(format & value_flags::format_as_hexadecimal)
-								   ? std::to_chars(buf, buf + sizeof(buf), val, std::chars_format::hex)
-								   : std::to_chars(buf, buf + sizeof(buf), val);
-				const auto str = std::string_view{ buf, static_cast<size_t>(res.ptr - buf) };
+				auto res = hex ? std::to_chars(buf, buf + sizeof(buf), val, std::chars_format::hex)
+							   : std::to_chars(buf, buf + sizeof(buf), val);
+				auto str = std::string_view{ buf, static_cast<size_t>(res.ptr - buf) };
+
+				char buf2[charconv_buffer_length<T>];
+				if (!hex && relaxed_precision)
+				{
+					res				= std::to_chars(buf2, buf2 + sizeof(buf2), val, std::chars_format::general, 6);
+					const auto str2 = std::string_view{ buf2, static_cast<size_t>(res.ptr - buf2) };
+					if (str2.length() < str.length())
+						str = str2;
+				}
+
 				impl::print_to_stream(stream, str);
-				if (!(format & value_flags::format_as_hexadecimal) && needs_decimal_point(str))
+				if (!hex && needs_decimal_point(str))
 					toml::impl::print_to_stream(stream, ".0"sv);
 
 #else
 
 				std::ostringstream ss;
 				ss.imbue(std::locale::classic());
-				ss.precision(std::numeric_limits<T>::digits10 + 1);
+				if (!relaxed_precision)
+					ss.precision(std::numeric_limits<T>::max_digits10);
 				if (!!(format & value_flags::format_as_hexadecimal))
 					ss << std::hexfloat;
 				ss << val;
@@ -8996,31 +9470,6 @@ TOML_ANON_NAMESPACE_START
 
 			default: TOML_UNREACHABLE;
 		}
-	}
-
-	template <typename T>
-	TOML_INTERNAL_LINKAGE
-	void print_integer_leftpad_zeros(std::ostream & stream, T val, size_t min_digits)
-	{
-#if TOML_INT_CHARCONV
-
-		char buf[charconv_buffer_length<T>];
-		const auto res = std::to_chars(buf, buf + sizeof(buf), val);
-		const auto len = static_cast<size_t>(res.ptr - buf);
-		for (size_t i = len; i < min_digits; i++)
-			stream.put('0');
-		impl::print_to_stream(stream, buf, static_cast<size_t>(res.ptr - buf));
-
-#else
-
-		std::ostringstream ss;
-		ss.imbue(std::locale::classic());
-		using cast_type = std::conditional_t<std::is_signed_v<T>, int64_t, uint64_t>;
-		ss << std::setfill('0') << std::setw(static_cast<int>(min_digits)) << static_cast<cast_type>(val);
-		const auto str = std::move(ss).str();
-		impl::print_to_stream(stream, str);
-
-#endif
 	}
 }
 TOML_ANON_NAMESPACE_END;
@@ -9053,63 +9502,63 @@ TOML_IMPL_NAMESPACE_START
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, int8_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, int8_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, int16_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, int16_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, int32_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, int32_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, int64_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, int64_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, uint8_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, uint8_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, uint16_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, uint16_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, uint32_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, uint32_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, uint64_t val, value_flags format)
+	void print_to_stream(std::ostream & stream, uint64_t val, value_flags format, size_t min_digits)
 	{
-		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_integer_to_stream(stream, val, format, min_digits);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, float val, value_flags format)
+	void print_to_stream(std::ostream & stream, float val, value_flags format, bool relaxed_precision)
 	{
-		TOML_ANON_NAMESPACE::print_floating_point_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_floating_point_to_stream(stream, val, format, relaxed_precision);
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	void print_to_stream(std::ostream & stream, double val, value_flags format)
+	void print_to_stream(std::ostream & stream, double val, value_flags format, bool relaxed_precision)
 	{
-		TOML_ANON_NAMESPACE::print_floating_point_to_stream(stream, val, format);
+		TOML_ANON_NAMESPACE::print_floating_point_to_stream(stream, val, format, relaxed_precision);
 	}
 
 	TOML_EXTERNAL_LINKAGE
@@ -9121,21 +9570,21 @@ TOML_IMPL_NAMESPACE_START
 	TOML_EXTERNAL_LINKAGE
 	void print_to_stream(std::ostream & stream, const toml::date& val)
 	{
-		print_integer_leftpad_zeros(stream, val.year, 4u);
+		print_to_stream(stream, val.year, {}, 4);
 		stream.put('-');
-		print_integer_leftpad_zeros(stream, val.month, 2u);
+		print_to_stream(stream, val.month, {}, 2);
 		stream.put('-');
-		print_integer_leftpad_zeros(stream, val.day, 2u);
+		print_to_stream(stream, val.day, {}, 2);
 	}
 
 	TOML_EXTERNAL_LINKAGE
 	void print_to_stream(std::ostream & stream, const toml::time& val)
 	{
-		print_integer_leftpad_zeros(stream, val.hour, 2u);
+		print_to_stream(stream, val.hour, {}, 2);
 		stream.put(':');
-		print_integer_leftpad_zeros(stream, val.minute, 2u);
+		print_to_stream(stream, val.minute, {}, 2);
 		stream.put(':');
-		print_integer_leftpad_zeros(stream, val.second, 2u);
+		print_to_stream(stream, val.second, {}, 2);
 		if (val.nanosecond && val.nanosecond <= 999999999u)
 		{
 			stream.put('.');
@@ -9146,7 +9595,7 @@ TOML_IMPL_NAMESPACE_START
 				ns /= 10u;
 				digits--;
 			}
-			print_integer_leftpad_zeros(stream, ns, digits);
+			print_to_stream(stream, ns, {}, digits);
 		}
 	}
 
@@ -9170,13 +9619,13 @@ TOML_IMPL_NAMESPACE_START
 		const auto hours = mins / 60;
 		if (hours)
 		{
-			print_integer_leftpad_zeros(stream, static_cast<unsigned int>(hours), 2u);
+			print_to_stream(stream, static_cast<unsigned int>(hours), {}, 2);
 			mins -= hours * 60;
 		}
 		else
 			print_to_stream(stream, "00"sv);
 		stream.put(':');
-		print_integer_leftpad_zeros(stream, static_cast<unsigned int>(mins), 2u);
+		print_to_stream(stream, static_cast<unsigned int>(mins), {}, 2);
 	}
 
 	TOML_EXTERNAL_LINKAGE
@@ -9289,6 +9738,12 @@ TOML_PUSH_WARNINGS;
 TOML_NAMESPACE_START
 {
 	TOML_EXTERNAL_LINKAGE
+	node::node() noexcept = default;
+
+	TOML_EXTERNAL_LINKAGE
+	node::~node() noexcept = default;
+
+	TOML_EXTERNAL_LINKAGE
 	node::node(node && other) noexcept //
 		: source_{ std::exchange(other.source_, {}) }
 	{}
@@ -9321,9 +9776,61 @@ TOML_NAMESPACE_START
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	node::~node() noexcept = default;
+	node_view<node> node::at_path(std::string_view path) noexcept
+	{
+		return toml::at_path(*this, path);
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	node_view<const node> node::at_path(std::string_view path) const noexcept
+	{
+		return toml::at_path(*this, path);
+	}
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+	TOML_EXTERNAL_LINKAGE
+	node_view<node> node::at_path(std::wstring_view path)
+	{
+		return toml::at_path(*this, path);
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	node_view<const node> node::at_path(std::wstring_view path) const
+	{
+		return toml::at_path(*this, path);
+	}
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
 }
 TOML_NAMESPACE_END;
+
+TOML_IMPL_NAMESPACE_START
+{
+	TOML_EXTERNAL_LINKAGE
+	bool node_deep_equality(const node* lhs, const node* rhs) noexcept
+	{
+		// both same or both null
+		if (lhs == rhs)
+			return true;
+
+		// lhs null != rhs null or different types
+		if ((!lhs != !rhs) || lhs->type() != rhs->type())
+			return false;
+
+		bool same;
+		lhs->visit(
+			[=, &same](auto& l) noexcept
+			{
+				using concrete_type = remove_cvref<decltype(l)>;
+
+				same = (l == *(rhs->as<concrete_type>()));
+			});
+
+		return same;
+	}
+}
+TOML_IMPL_NAMESPACE_END;
 
 #ifdef _MSC_VER
 #pragma pop_macro("min")
@@ -9331,8 +9838,15 @@ TOML_NAMESPACE_END;
 #endif
 TOML_POP_WARNINGS;
 
-//********  impl/node_view.inl  ****************************************************************************************
+//********  impl/at_path.inl  ******************************************************************************************
 
+TOML_DISABLE_WARNINGS;
+#if TOML_INT_CHARCONV
+#include <charconv>
+#else
+#include <sstream>
+#endif
+TOML_ENABLE_WARNINGS;
 TOML_PUSH_WARNINGS;
 #ifdef _MSC_VER
 #pragma push_macro("min")
@@ -9341,158 +9855,206 @@ TOML_PUSH_WARNINGS;
 #undef max
 #endif
 
-#if TOML_EXTERN_TEMPLATES && TOML_IMPLEMENTATION
+TOML_ANON_NAMESPACE_START
+{
+	TOML_INTERNAL_LINKAGE
+	node* get_at_path(node & root, std::string_view path) noexcept
+	{
+		if (root.is_value()) // values don't have child nodes
+			return nullptr;
+
+		size_t pos					= 0;
+		const auto end				= path.length();
+		node* current				= &root;
+		bool prev_was_array_indexer = false;
+		bool prev_was_dot			= root.is_table(); // implicit '.' at the start for tables
+
+		while (pos < end && current)
+		{
+			// start of an array indexer
+			if (path[pos] == '[')
+			{
+				const auto current_array = current->as<array>();
+				if (!current_array)
+					return nullptr;
+
+				// get array index substring
+				const auto index_start = pos + 1u;					  // first position after '['
+				const auto index_end   = path.find(']', index_start); // position of ']'
+				if (index_end == std::string_view::npos || index_end == index_start)
+					return nullptr;
+				auto index_str = path.substr(index_start, index_end - index_start);
+
+				// trim whitespace from either side of the index
+				const auto first_non_ws = index_str.find_first_not_of(" \t"sv);
+				const auto last_non_ws	= index_str.find_last_not_of(" \t"sv);
+				if (first_non_ws == std::string_view::npos)
+					return nullptr;
+				TOML_ASSERT_ASSUME(last_non_ws != std::string_view::npos);
+				index_str = index_str.substr(first_non_ws, (last_non_ws - first_non_ws) + 1u);
+
+				// parse the actual array index
+				size_t index;
+				if (index_str.length() == 1u && index_str[0] >= '0' && index_str[0] <= '9')
+					index = static_cast<size_t>(index_str[0] - '0');
+				else
+				{
+#if TOML_INT_CHARCONV
+
+					auto fc_result = std::from_chars(index_str.data(), index_str.data() + index_str.length(), index);
+					if (fc_result.ec != std::errc{})
+						return nullptr;
+
+#else
+
+					std::stringstream ss;
+					ss.imbue(std::locale::classic());
+					ss.write(index_str.data(), static_cast<std::streamsize>(index_str.length()));
+					if (!(ss >> index))
+						return nullptr;
+
+#endif
+				}
+
+				current				   = current_array->get(index);
+				pos					   = index_end + 1u;
+				prev_was_dot		   = false;
+				prev_was_array_indexer = true;
+			}
+
+			// start of a new table child
+			else if (path[pos] == '.')
+			{
+				const auto current_table = current->as<table>();
+				if (!current_table)
+					return nullptr;
+
+				// a dot immediately following another dot (or at the beginning of the string) is as if we'd asked
+				// for an empty child in between, e.g.
+				//
+				//     foo..bar
+				//
+				// is equivalent to
+				//
+				//     "foo".""."bar"
+				//
+				if (prev_was_dot)
+					current = current_table->get(""sv);
+
+				pos++;
+				prev_was_dot		   = true;
+				prev_was_array_indexer = false;
+			}
+
+			// some regular subkey
+			else
+			{
+				// get subkey text
+				const auto subkey_start = pos;
+				const auto subkey_len =
+					impl::min(path.find_first_of(".["sv, subkey_start + 1u), path.length()) - subkey_start;
+				const auto subkey = path.substr(subkey_start, subkey_len);
+
+				// a regular subkey segment immediately after an array indexer is OK if it was all whitespace, e.g.:
+				//
+				//     "foo[0]  .bar"
+				//            ^^ skip this
+				//
+				// otherwise its an error (since it would have to be preceeded by a dot)
+				if (prev_was_array_indexer)
+				{
+					auto non_ws = subkey.find_first_not_of(" \t");
+					if (non_ws == std::string_view::npos)
+					{
+						pos += subkey_len;
+						prev_was_dot		   = false;
+						prev_was_array_indexer = false;
+						continue;
+					}
+					else
+						return nullptr;
+				}
+
+				const auto current_table = current->as<table>();
+				if (!current_table)
+					return nullptr;
+
+				current = current_table->get(subkey);
+				pos += subkey_len;
+				prev_was_dot		   = false;
+				prev_was_array_indexer = false;
+			}
+		}
+
+		// a dot at the end is as if we'd asked for an empty child at the end, e.g.
+		//
+		//     foo.bar.
+		//
+		// is equivalent to
+		//
+		//     "foo"."bar".""
+		//
+		if (current && prev_was_dot)
+		{
+			const auto current_table = current->as<table>();
+			if (!current_table)
+				return nullptr;
+
+			current = current_table->get(""sv);
+		}
+
+		return current;
+	}
+
+#if TOML_ENABLE_WINDOWS_COMPAT
+
+	TOML_INTERNAL_LINKAGE
+	node* get_at_path(node & root, std::wstring_view path) noexcept
+	{
+		if (auto tbl = root.as_table(); tbl && tbl->empty())
+			return {};
+		if (auto arr = root.as_array(); arr && arr->empty())
+			return {};
+
+		return get_at_path(root, impl::narrow(path));
+	}
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
+}
+
+TOML_ANON_NAMESPACE_END;
 
 TOML_NAMESPACE_START
 {
-	TOML_EXTERN
-	template class TOML_API node_view<node>;
-	TOML_EXTERN
-	template class TOML_API node_view<const node>;
+	TOML_EXTERNAL_LINKAGE
+	node_view<node> at_path(node & root, std::string_view path) noexcept
+	{
+		return node_view<node>{ TOML_ANON_NAMESPACE::get_at_path(root, path) };
+	}
 
-#define TOML_EXTERN_FUNC(name, T)                                                                                      \
-	TOML_EXTERN                                                                                                        \
-	template TOML_API                                                                                                  \
-	optional<T> node_view<node>::name<T>() const TOML_EXTERN_NOEXCEPT(impl::value_retrieval_is_nothrow<T>);            \
-	TOML_EXTERN                                                                                                        \
-	template TOML_API                                                                                                  \
-	optional<T> node_view<const node>::name<T>() const TOML_EXTERN_NOEXCEPT(impl::value_retrieval_is_nothrow<T>)
-
-	TOML_EXTERN_FUNC(value_exact, std::string_view);
-	TOML_EXTERN_FUNC(value_exact, std::string);
-	TOML_EXTERN_FUNC(value_exact, const char*);
-	TOML_EXTERN_FUNC(value_exact, int64_t);
-	TOML_EXTERN_FUNC(value_exact, double);
-	TOML_EXTERN_FUNC(value_exact, date);
-	TOML_EXTERN_FUNC(value_exact, time);
-	TOML_EXTERN_FUNC(value_exact, date_time);
-	TOML_EXTERN_FUNC(value_exact, bool);
-	TOML_EXTERN_FUNC(value, std::string_view);
-	TOML_EXTERN_FUNC(value, std::string);
-	TOML_EXTERN_FUNC(value, const char*);
-	TOML_EXTERN_FUNC(value, signed char);
-	TOML_EXTERN_FUNC(value, signed short);
-	TOML_EXTERN_FUNC(value, signed int);
-	TOML_EXTERN_FUNC(value, signed long);
-	TOML_EXTERN_FUNC(value, signed long long);
-	TOML_EXTERN_FUNC(value, unsigned char);
-	TOML_EXTERN_FUNC(value, unsigned short);
-	TOML_EXTERN_FUNC(value, unsigned int);
-	TOML_EXTERN_FUNC(value, unsigned long);
-	TOML_EXTERN_FUNC(value, unsigned long long);
-	TOML_EXTERN_FUNC(value, double);
-	TOML_EXTERN_FUNC(value, float);
-	TOML_EXTERN_FUNC(value, date);
-	TOML_EXTERN_FUNC(value, time);
-	TOML_EXTERN_FUNC(value, date_time);
-	TOML_EXTERN_FUNC(value, bool);
-
-#if TOML_HAS_CHAR8
-	TOML_EXTERN_FUNC(value_exact, std::u8string_view);
-	TOML_EXTERN_FUNC(value_exact, std::u8string);
-	TOML_EXTERN_FUNC(value_exact, const char8_t*);
-	TOML_EXTERN_FUNC(value, std::u8string_view);
-	TOML_EXTERN_FUNC(value, std::u8string);
-	TOML_EXTERN_FUNC(value, const char8_t*);
-#endif
+	TOML_EXTERNAL_LINKAGE
+	node_view<const node> at_path(const node& root, std::string_view path) noexcept
+	{
+		return node_view<const node>{ TOML_ANON_NAMESPACE::get_at_path(const_cast<node&>(root), path) };
+	}
 
 #if TOML_ENABLE_WINDOWS_COMPAT
-	TOML_EXTERN_FUNC(value_exact, std::wstring);
-	TOML_EXTERN_FUNC(value, std::wstring);
-#endif
 
-#undef TOML_EXTERN_FUNC
+	TOML_EXTERNAL_LINKAGE
+	node_view<node> at_path(node & root, std::wstring_view path)
+	{
+		return node_view<node>{ TOML_ANON_NAMESPACE::get_at_path(root, path) };
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	node_view<const node> at_path(const node& root, std::wstring_view path)
+	{
+		return node_view<const node>{ TOML_ANON_NAMESPACE::get_at_path(const_cast<node&>(root), path) };
+	}
+
+#endif // TOML_ENABLE_WINDOWS_COMPAT
 }
 TOML_NAMESPACE_END;
-
-#endif // TOML_EXTERN_TEMPLATES
-
-#ifdef _MSC_VER
-#pragma pop_macro("min")
-#pragma pop_macro("max")
-#endif
-TOML_POP_WARNINGS;
-
-//********  impl/value.inl  ********************************************************************************************
-
-TOML_PUSH_WARNINGS;
-#ifdef _MSC_VER
-#pragma push_macro("min")
-#pragma push_macro("max")
-#undef min
-#undef max
-#endif
-
-#if TOML_EXTERN_TEMPLATES && TOML_IMPLEMENTATION
-
-TOML_NAMESPACE_START
-{
-	TOML_EXTERN
-	template class TOML_API value<std::string>;
-	TOML_EXTERN
-	template class TOML_API value<int64_t>;
-	TOML_EXTERN
-	template class TOML_API value<double>;
-	TOML_EXTERN
-	template class TOML_API value<bool>;
-	TOML_EXTERN
-	template class TOML_API value<date>;
-	TOML_EXTERN
-	template class TOML_API value<time>;
-	TOML_EXTERN
-	template class TOML_API value<date_time>;
-
-#define TOML_EXTERN_FUNC(name, T)                                                                                      \
-	TOML_EXTERN                                                                                                        \
-	template TOML_API                                                                                                  \
-	optional<T> node::name<T>() const TOML_EXTERN_NOEXCEPT(impl::value_retrieval_is_nothrow<T>)
-
-	TOML_EXTERN_FUNC(value_exact, std::string_view);
-	TOML_EXTERN_FUNC(value_exact, std::string);
-	TOML_EXTERN_FUNC(value_exact, const char*);
-	TOML_EXTERN_FUNC(value_exact, int64_t);
-	TOML_EXTERN_FUNC(value_exact, double);
-	TOML_EXTERN_FUNC(value_exact, date);
-	TOML_EXTERN_FUNC(value_exact, time);
-	TOML_EXTERN_FUNC(value_exact, date_time);
-	TOML_EXTERN_FUNC(value_exact, bool);
-	TOML_EXTERN_FUNC(value, std::string_view);
-	TOML_EXTERN_FUNC(value, std::string);
-	TOML_EXTERN_FUNC(value, const char*);
-	TOML_EXTERN_FUNC(value, signed char);
-	TOML_EXTERN_FUNC(value, signed short);
-	TOML_EXTERN_FUNC(value, signed int);
-	TOML_EXTERN_FUNC(value, signed long);
-	TOML_EXTERN_FUNC(value, signed long long);
-	TOML_EXTERN_FUNC(value, unsigned char);
-	TOML_EXTERN_FUNC(value, unsigned short);
-	TOML_EXTERN_FUNC(value, unsigned int);
-	TOML_EXTERN_FUNC(value, unsigned long);
-	TOML_EXTERN_FUNC(value, unsigned long long);
-	TOML_EXTERN_FUNC(value, double);
-	TOML_EXTERN_FUNC(value, float);
-	TOML_EXTERN_FUNC(value, date);
-	TOML_EXTERN_FUNC(value, time);
-	TOML_EXTERN_FUNC(value, date_time);
-	TOML_EXTERN_FUNC(value, bool);
-#if TOML_HAS_CHAR8
-	TOML_EXTERN_FUNC(value_exact, std::u8string_view);
-	TOML_EXTERN_FUNC(value_exact, std::u8string);
-	TOML_EXTERN_FUNC(value_exact, const char8_t*);
-	TOML_EXTERN_FUNC(value, std::u8string_view);
-	TOML_EXTERN_FUNC(value, std::u8string);
-	TOML_EXTERN_FUNC(value, const char8_t*);
-#endif
-#if TOML_ENABLE_WINDOWS_COMPAT
-	TOML_EXTERN_FUNC(value_exact, std::wstring);
-	TOML_EXTERN_FUNC(value, std::wstring);
-#endif
-
-#undef TOML_EXTERN_FUNC
-}
-TOML_NAMESPACE_END;
-
-#endif // TOML_EXTERN_TEMPLATES
 
 #ifdef _MSC_VER
 #pragma pop_macro("min")
@@ -9513,6 +10075,53 @@ TOML_PUSH_WARNINGS;
 TOML_NAMESPACE_START
 {
 	TOML_EXTERNAL_LINKAGE
+	array::array() noexcept
+	{
+#if TOML_LIFETIME_HOOKS
+		TOML_ARRAY_CREATED;
+#endif
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	array::~array() noexcept
+	{
+#if TOML_LIFETIME_HOOKS
+		TOML_ARRAY_DESTROYED;
+#endif
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	array::array(const impl::array_init_elem* b, const impl::array_init_elem* e)
+	{
+#if TOML_LIFETIME_HOOKS
+		TOML_ARRAY_CREATED;
+#endif
+
+		TOML_ASSERT_ASSUME(b);
+		TOML_ASSERT_ASSUME(e);
+		TOML_ASSERT_ASSUME(b <= e);
+
+		if TOML_UNLIKELY(b == e)
+			return;
+
+		size_t cap{};
+		for (auto it = b; it != e; it++)
+		{
+			if (it->value)
+				cap++;
+		}
+		if TOML_UNLIKELY(!cap)
+			return;
+
+		elems_.reserve(cap);
+		for (; b != e; b++)
+		{
+			if (b->value)
+				elems_.push_back(std::move(b->value));
+		}
+	}
+
+	TOML_EXTERNAL_LINKAGE
 	array::array(const array& other) //
 		: node(other)
 	{
@@ -9528,7 +10137,7 @@ TOML_NAMESPACE_START
 	TOML_EXTERNAL_LINKAGE
 	array::array(array && other) noexcept //
 		: node(std::move(other)),
-		  elems_{ std::move(other.elems_) }
+		  elems_(std::move(other.elems_))
 	{
 #if TOML_LIFETIME_HOOKS
 		TOML_ARRAY_CREATED;
@@ -9564,7 +10173,7 @@ TOML_NAMESPACE_START
 	void array::preinsertion_resize(size_t idx, size_t count)
 	{
 		TOML_ASSERT(idx <= elems_.size());
-		TOML_ASSERT(count >= 1u);
+		TOML_ASSERT_ASSUME(count >= 1u);
 		const auto old_size			= elems_.size();
 		const auto new_size			= old_size + count;
 		const auto inserting_at_end = idx == old_size;
@@ -9574,6 +10183,18 @@ TOML_NAMESPACE_START
 			for (size_t left = old_size, right = new_size - 1u; left-- > idx; right--)
 				elems_[right] = std::move(elems_[left]);
 		}
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	void array::insert_at_back(impl::node_ptr && elem)
+	{
+		elems_.push_back(std::move(elem));
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	array::vector_iterator array::insert_at(const_vector_iterator pos, impl::node_ptr && elem)
+	{
+		return elems_.insert(pos, std::move(elem));
 	}
 
 	TOML_EXTERNAL_LINKAGE
@@ -9632,34 +10253,41 @@ TOML_NAMESPACE_START
 #else
 
 		auto n = get(index);
-		TOML_ASSERT(n && "element index not found in array!");
+		TOML_ASSERT_ASSUME(n && "element index not found in array!");
 		return *n;
 
 #endif
 	}
 
 	TOML_EXTERNAL_LINKAGE
-	bool array::equal(const array& lhs, const array& rhs) noexcept
+	void array::reserve(size_t new_capacity)
 	{
-		if (&lhs == &rhs)
-			return true;
-		if (lhs.elems_.size() != rhs.elems_.size())
-			return false;
-		for (size_t i = 0, e = lhs.elems_.size(); i < e; i++)
-		{
-			const auto lhs_type = lhs.elems_[i]->type();
-			const node& rhs_	= *rhs.elems_[i];
-			const auto rhs_type = rhs_.type();
-			if (lhs_type != rhs_type)
-				return false;
+		elems_.reserve(new_capacity);
+	}
 
-			const bool equal = lhs.elems_[i]->visit(
-				[&](const auto& lhs_) noexcept
-				{ return lhs_ == *reinterpret_cast<std::remove_reference_t<decltype(lhs_)>*>(&rhs_); });
-			if (!equal)
-				return false;
-		}
-		return true;
+	TOML_EXTERNAL_LINKAGE
+	void array::shrink_to_fit()
+	{
+		elems_.shrink_to_fit();
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	void array::truncate(size_t new_size)
+	{
+		if (new_size < elems_.size())
+			elems_.resize(new_size);
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	array::iterator array::erase(const_iterator pos) noexcept
+	{
+		return iterator{ elems_.erase(const_vector_iterator{ pos }) };
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	array::iterator array::erase(const_iterator first, const_iterator last) noexcept
+	{
+		return iterator{ elems_.erase(const_vector_iterator{ first }, const_vector_iterator{ last }) };
 	}
 
 	TOML_EXTERNAL_LINKAGE
@@ -9739,6 +10367,69 @@ TOML_NAMESPACE_START
 
 		return *this;
 	}
+
+	TOML_EXTERNAL_LINKAGE
+	array& array::prune(bool recursive)& noexcept
+	{
+		if (elems_.empty())
+			return *this;
+
+		for (size_t i = elems_.size(); i-- > 0u;)
+		{
+			if (auto arr = elems_[i]->as_array())
+			{
+				if (recursive)
+					arr->prune(true);
+				if (arr->empty())
+					elems_.erase(elems_.cbegin() + static_cast<ptrdiff_t>(i));
+			}
+			else if (auto tbl = elems_[i]->as_table())
+			{
+				if (recursive)
+					tbl->prune(true);
+				if (tbl->empty())
+					elems_.erase(elems_.cbegin() + static_cast<ptrdiff_t>(i));
+			}
+		}
+
+		return *this;
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	void array::pop_back() noexcept
+	{
+		elems_.pop_back();
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	void array::clear() noexcept
+	{
+		elems_.clear();
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	bool array::equal(const array& lhs, const array& rhs) noexcept
+	{
+		if (&lhs == &rhs)
+			return true;
+		if (lhs.elems_.size() != rhs.elems_.size())
+			return false;
+		for (size_t i = 0, e = lhs.elems_.size(); i < e; i++)
+		{
+			const auto lhs_type = lhs.elems_[i]->type();
+			const node& rhs_	= *rhs.elems_[i];
+			const auto rhs_type = rhs_.type();
+			if (lhs_type != rhs_type)
+				return false;
+
+			const bool equal = lhs.elems_[i]->visit(
+				[&](const auto& lhs_) noexcept
+				{ return lhs_ == *reinterpret_cast<std::remove_reference_t<decltype(lhs_)>*>(&rhs_); });
+			if (!equal)
+				return false;
+		}
+		return true;
+	}
 }
 TOML_NAMESPACE_END;
 
@@ -9761,8 +10452,35 @@ TOML_PUSH_WARNINGS;
 TOML_NAMESPACE_START
 {
 	TOML_EXTERNAL_LINKAGE
+	table::table() noexcept
+	{
+#if TOML_LIFETIME_HOOKS
+		TOML_TABLE_CREATED;
+#endif
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table::~table() noexcept
+	{
+#if TOML_LIFETIME_HOOKS
+		TOML_TABLE_DESTROYED;
+#endif
+	}
+
+	TOML_EXTERNAL_LINKAGE
 	table::table(const impl::table_init_pair* b, const impl::table_init_pair* e)
 	{
+#if TOML_LIFETIME_HOOKS
+		TOML_TABLE_CREATED;
+#endif
+
+		TOML_ASSERT_ASSUME(b);
+		TOML_ASSERT_ASSUME(e);
+		TOML_ASSERT_ASSUME(b <= e);
+
+		if TOML_UNLIKELY(b == e)
+			return;
+
 		for (; b != e; b++)
 		{
 			if (!b->value) // empty node_views
@@ -9770,10 +10488,6 @@ TOML_NAMESPACE_START
 
 			map_.insert_or_assign(std::move(b->key), std::move(b->value));
 		}
-
-#if TOML_LIFETIME_HOOKS
-		TOML_TABLE_CREATED;
-#endif
 	}
 
 	TOML_EXTERNAL_LINKAGE
@@ -9837,7 +10551,7 @@ TOML_NAMESPACE_START
 
 		for (auto&& [k, v] : map_)
 		{
-			static_cast<void>(k);
+			TOML_UNUSED(k);
 			if (v->type() != ntype)
 				return false;
 		}
@@ -9857,7 +10571,7 @@ TOML_NAMESPACE_START
 			ntype = map_.cbegin()->second->type();
 		for (const auto& [k, v] : map_)
 		{
-			static_cast<void>(k);
+			TOML_UNUSED(k);
 			if (v->type() != ntype)
 			{
 				first_nonmatch = v.get();
@@ -9901,11 +10615,100 @@ TOML_NAMESPACE_START
 
 #else
 
-		TOML_ASSERT(n && "key not found in table!");
+		TOML_ASSERT_ASSUME(n && "key not found in table!");
 
 #endif
 
 		return *n;
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table::map_iterator table::get_lower_bound(std::string_view key) noexcept
+	{
+		return map_.lower_bound(key);
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table::iterator table::find(std::string_view key) noexcept
+	{
+		return iterator{ map_.find(key) };
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table::const_iterator table::find(std::string_view key) const noexcept
+	{
+		return const_iterator{ map_.find(key) };
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table::map_iterator table::erase(const_map_iterator pos) noexcept
+	{
+		return map_.erase(pos);
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table::map_iterator table::erase(const_map_iterator begin, const_map_iterator end) noexcept
+	{
+		return map_.erase(begin, end);
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	size_t table::erase(std::string_view key) noexcept
+	{
+		if (auto it = map_.find(key); it != map_.end())
+		{
+			map_.erase(it);
+			return size_t{ 1 };
+		}
+		return size_t{};
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table& table::prune(bool recursive)& noexcept
+	{
+		if (map_.empty())
+			return *this;
+
+		for (auto it = map_.begin(); it != map_.end();)
+		{
+			if (auto arr = it->second->as_array())
+			{
+				if (recursive)
+					arr->prune(true);
+
+				if (arr->empty())
+				{
+					it = map_.erase(it);
+					continue;
+				}
+			}
+			else if (auto tbl = it->second->as_table())
+			{
+				if (recursive)
+					tbl->prune(true);
+
+				if (tbl->empty())
+				{
+					it = map_.erase(it);
+					continue;
+				}
+			}
+			it++;
+		}
+
+		return *this;
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	void table::clear() noexcept
+	{
+		map_.clear();
+	}
+
+	TOML_EXTERNAL_LINKAGE
+	table::map_iterator table::insert_with_hint(const_iterator hint, key && k, impl::node_ptr && v)
+	{
+		return map_.emplace_hint(const_map_iterator{ hint }, std::move(k), std::move(v));
 	}
 
 	TOML_EXTERNAL_LINKAGE
@@ -9935,18 +10738,6 @@ TOML_NAMESPACE_START
 		}
 		return true;
 	}
-
-	TOML_EXTERNAL_LINKAGE
-	table::iterator table::lower_bound(std::string_view key) noexcept
-	{
-		return iterator{ map_.lower_bound(key) };
-	}
-
-	TOML_EXTERNAL_LINKAGE
-	table::const_iterator table::lower_bound(std::string_view key) const noexcept
-	{
-		return const_iterator{ map_.lower_bound(key) };
-	}
 }
 TOML_NAMESPACE_END;
 
@@ -9956,23 +10747,7 @@ TOML_NAMESPACE_END;
 #endif
 TOML_POP_WARNINGS;
 
-//********  impl/parser.inl  *******************************************************************************************
-
-#if TOML_ENABLE_PARSER
-
-TOML_DISABLE_WARNINGS;
-#include <istream>
-#include <fstream>
-#if TOML_INT_CHARCONV || TOML_FLOAT_CHARCONV
-#include <charconv>
-#endif
-#if !TOML_INT_CHARCONV || !TOML_FLOAT_CHARCONV
-#include <sstream>
-#endif
-#if !TOML_INT_CHARCONV
-#include <iomanip>
-#endif
-TOML_ENABLE_WARNINGS;
+//********  impl/unicode.inl  ******************************************************************************************
 
 #if TOML_ENABLE_SIMD
 
@@ -10010,32 +10785,21 @@ TOML_PUSH_WARNINGS;
 #undef max
 #endif
 
-#ifdef NDEBUG
-#define assert_or_assume(cond) TOML_ASSUME(cond)
-#else
-#define assert_or_assume(cond) TOML_ASSERT(cond)
-#endif
-
-TOML_ANON_NAMESPACE_START
+TOML_IMPL_NAMESPACE_START
 {
-	template <typename T>
-	TOML_PURE_GETTER
-	TOML_ATTR(nonnull)
-	TOML_INTERNAL_LINKAGE
-	bool is_ascii(const T* str, size_t size) noexcept
+	TOML_EXTERNAL_LINKAGE
+	bool is_ascii(const char* str, size_t len) noexcept
 	{
-		static_assert(sizeof(T) == 1);
-
-		const T* const end = str + size;
+		const char* const end = str + len;
 
 #if TOML_HAS_SSE2 && (128 % CHAR_BIT) == 0
 		{
-			constexpr size_t chars_per_vector = 128 / CHAR_BIT;
+			constexpr size_t chars_per_vector = 128u / CHAR_BIT;
 
-			if (const size_t simdable = size - (size % chars_per_vector))
+			if (const size_t simdable = len - (len % chars_per_vector))
 			{
 				__m128i mask = _mm_setzero_si128();
-				for (const T* const e = str + simdable; str < e; str += chars_per_vector)
+				for (const char* const e = str + simdable; str < e; str += chars_per_vector)
 				{
 					const __m128i current_bytes = _mm_loadu_si128(reinterpret_cast<const __m128i*>(str));
 					mask						= _mm_or_si128(mask, current_bytes);
@@ -10059,7 +10823,42 @@ TOML_ANON_NAMESPACE_START
 
 		return true;
 	}
+}
+TOML_IMPL_NAMESPACE_END;
 
+#ifdef _MSC_VER
+#pragma pop_macro("min")
+#pragma pop_macro("max")
+#endif
+TOML_POP_WARNINGS;
+
+//********  impl/parser.inl  *******************************************************************************************
+
+#if TOML_ENABLE_PARSER
+
+TOML_DISABLE_WARNINGS;
+#include <istream>
+#include <fstream>
+#if TOML_INT_CHARCONV || TOML_FLOAT_CHARCONV
+#include <charconv>
+#endif
+#if !TOML_INT_CHARCONV || !TOML_FLOAT_CHARCONV
+#include <sstream>
+#endif
+#if !TOML_INT_CHARCONV
+#include <iomanip>
+#endif
+TOML_ENABLE_WARNINGS;
+TOML_PUSH_WARNINGS;
+#ifdef _MSC_VER
+#pragma push_macro("min")
+#pragma push_macro("max")
+#undef min
+#undef max
+#endif
+
+TOML_ANON_NAMESPACE_START
+{
 	template <typename T>
 	class utf8_byte_stream;
 
@@ -10080,22 +10879,8 @@ TOML_ANON_NAMESPACE_START
 		explicit constexpr utf8_byte_stream(std::basic_string_view<Char> sv) noexcept //
 			: source_{ sv }
 		{
-			// trim trailing nulls
-			const size_t initial_len = source_.length();
-			size_t actual_len		 = initial_len;
-			for (size_t i = actual_len; i-- > 0u;)
-			{
-				if (source_[i] != Char{}) // not '\0'
-				{
-					actual_len = i + 1u;
-					break;
-				}
-			}
-			if (initial_len != actual_len)
-				source_ = source_.substr(0u, actual_len);
-
 			// skip bom
-			if (actual_len >= 3u && memcmp(utf8_byte_order_mark.data(), source_.data(), 3u) == 0)
+			if (source_.length() >= 3u && memcmp(utf8_byte_order_mark.data(), source_.data(), 3u) == 0)
 				position_ += 3u;
 		}
 
@@ -10127,7 +10912,7 @@ TOML_ANON_NAMESPACE_START
 		TOML_ATTR(nonnull)
 		size_t operator()(void* dest, size_t num) noexcept
 		{
-			assert_or_assume(!eof());
+			TOML_ASSERT_ASSUME(!eof());
 
 			num = impl::min(position_ + num, source_.length()) - position_;
 			std::memcpy(dest, source_.data() + position_, num);
@@ -10240,8 +11025,8 @@ TOML_ANON_NAMESPACE_START
 
 #if TOML_EXCEPTIONS
 #define utf8_reader_error(...)				throw parse_error(__VA_ARGS__)
-#define utf8_reader_return_after_error(...) (void)0
-#define utf8_reader_error_check(...)		(void)0
+#define utf8_reader_return_after_error(...) static_assert(true)
+#define utf8_reader_error_check(...)		static_assert(true)
 #else
 #define utf8_reader_error(...)				err_.emplace(__VA_ARGS__)
 #define utf8_reader_return_after_error(...) return __VA_ARGS__
@@ -10253,6 +11038,12 @@ TOML_ANON_NAMESPACE_START
 	}                                                                                                                  \
 	while (false)
 
+#endif
+
+#if defined(__APPLE__) || defined(__MINGW32__) || defined(__MINGW64__) // because, honestly, what the fuck macOS & MinGW??
+#define TOML_OVERALIGNED
+#else
+#define TOML_OVERALIGNED alignas(32)
 #endif
 
 	template <typename T>
@@ -10272,7 +11063,7 @@ TOML_ANON_NAMESPACE_START
 
 		struct codepoints_t
 		{
-			alignas(32) utf8_codepoint buffer[block_capacity];
+			TOML_OVERALIGNED utf8_codepoint buffer[block_capacity];
 			size_t current;
 			size_t count;
 		} codepoints_;
@@ -10287,7 +11078,7 @@ TOML_ANON_NAMESPACE_START
 		{
 			TOML_ASSERT(stream_);
 
-			alignas(32) char raw_bytes[block_capacity];
+			TOML_OVERALIGNED char raw_bytes[block_capacity];
 			size_t raw_bytes_read;
 
 			// read the next raw (encoded) block in from the stream
@@ -10335,7 +11126,7 @@ TOML_ANON_NAMESPACE_START
 				return false;
 			}
 
-			assert_or_assume(raw_bytes_read);
+			TOML_ASSERT_ASSUME(raw_bytes_read);
 			std::memset(&codepoints_, 0, sizeof(codepoints_));
 
 			// helper for calculating decoded codepoint line+cols
@@ -10346,7 +11137,7 @@ TOML_ANON_NAMESPACE_START
 					auto& cp	= codepoints_.buffer[i];
 					cp.position = next_pos_;
 
-					if (impl::is_vertical_whitespace_excl_cr(cp))
+					if (cp == U'\n')
 					{
 						next_pos_.line++;
 						next_pos_.column = source_index{ 1 };
@@ -10357,7 +11148,7 @@ TOML_ANON_NAMESPACE_START
 			};
 
 			// decide whether we need to use the UTF-8 decoder or if we can treat this block as plain ASCII
-			const auto ascii_fast_path = !decoder_.needs_more_input() && is_ascii(raw_bytes, raw_bytes_read);
+			const auto ascii_fast_path = !decoder_.needs_more_input() && impl::is_ascii(raw_bytes, raw_bytes_read);
 
 			// ASCII fast-path
 			if (ascii_fast_path)
@@ -10422,7 +11213,7 @@ TOML_ANON_NAMESPACE_START
 				}
 			}
 
-			assert_or_assume(codepoints_.count);
+			TOML_ASSERT_ASSUME(codepoints_.count);
 			calc_positions();
 
 			// handle general I/O errors
@@ -10470,11 +11261,11 @@ TOML_ANON_NAMESPACE_START
 				if TOML_UNLIKELY(!stream_ || !read_next_block())
 					return nullptr;
 
-				assert_or_assume(!codepoints_.current);
+				TOML_ASSERT_ASSUME(!codepoints_.current);
 			}
-			assert_or_assume(codepoints_.count);
-			assert_or_assume(codepoints_.count <= block_capacity);
-			assert_or_assume(codepoints_.current < codepoints_.count);
+			TOML_ASSERT_ASSUME(codepoints_.count);
+			TOML_ASSERT_ASSUME(codepoints_.count <= block_capacity);
+			TOML_ASSERT_ASSUME(codepoints_.current < codepoints_.count);
 
 			return &codepoints_.buffer[codepoints_.current++];
 		}
@@ -10506,7 +11297,7 @@ TOML_ANON_NAMESPACE_START
 	utf8_reader(std::basic_istream<Char>&, std::string &&) -> utf8_reader<std::basic_istream<Char>>;
 
 #if TOML_EXCEPTIONS
-#define utf8_buffered_reader_error_check(...) (void)0
+#define utf8_buffered_reader_error_check(...) static_assert(true)
 #else
 #define utf8_buffered_reader_error_check(...)                                                                          \
 	do                                                                                                                 \
@@ -10521,7 +11312,7 @@ TOML_ANON_NAMESPACE_START
 	class TOML_EMPTY_BASES utf8_buffered_reader
 	{
 	  public:
-		static constexpr size_t max_history_length = 72;
+		static constexpr size_t max_history_length = 128;
 
 	  private:
 		static constexpr size_t history_buffer_size = max_history_length - 1; //'head' is stored in the reader
@@ -10590,8 +11381,8 @@ TOML_ANON_NAMESPACE_START
 		{
 			utf8_buffered_reader_error_check({});
 
-			assert_or_assume(history_.count);
-			assert_or_assume(negative_offset_ + count <= history_.count);
+			TOML_ASSERT_ASSUME(history_.count);
+			TOML_ASSERT_ASSUME(negative_offset_ + count <= history_.count);
 
 			negative_offset_ += count;
 
@@ -10644,9 +11435,10 @@ TOML_ANON_NAMESPACE_START
 		static constexpr auto scope_qualifier  = "binary integer"sv;
 		static constexpr auto is_digit		   = impl::is_binary_digit;
 		static constexpr auto is_signed		   = false;
-		static constexpr auto buffer_length	   = 63;
+		static constexpr auto max_digits	   = 63;
 		static constexpr auto prefix_codepoint = U'b';
 		static constexpr auto prefix		   = "b"sv;
+		static constexpr auto full_prefix	   = "0b"sv;
 	};
 	template <>
 	struct parse_integer_traits<8>
@@ -10654,9 +11446,10 @@ TOML_ANON_NAMESPACE_START
 		static constexpr auto scope_qualifier  = "octal integer"sv;
 		static constexpr auto is_digit		   = impl::is_octal_digit;
 		static constexpr auto is_signed		   = false;
-		static constexpr auto buffer_length	   = 21; // strlen("777777777777777777777")
+		static constexpr auto max_digits	   = 21; // strlen("777777777777777777777")
 		static constexpr auto prefix_codepoint = U'o';
 		static constexpr auto prefix		   = "o"sv;
+		static constexpr auto full_prefix	   = "0o"sv;
 	};
 	template <>
 	struct parse_integer_traits<10>
@@ -10664,7 +11457,8 @@ TOML_ANON_NAMESPACE_START
 		static constexpr auto scope_qualifier = "decimal integer"sv;
 		static constexpr auto is_digit		  = impl::is_decimal_digit;
 		static constexpr auto is_signed		  = true;
-		static constexpr auto buffer_length	  = 19; // strlen("9223372036854775807")
+		static constexpr auto max_digits	  = 19; // strlen("9223372036854775807")
+		static constexpr auto full_prefix	  = ""sv;
 	};
 	template <>
 	struct parse_integer_traits<16>
@@ -10672,9 +11466,10 @@ TOML_ANON_NAMESPACE_START
 		static constexpr auto scope_qualifier  = "hexadecimal integer"sv;
 		static constexpr auto is_digit		   = impl::is_hexadecimal_digit;
 		static constexpr auto is_signed		   = false;
-		static constexpr auto buffer_length	   = 16; // strlen("7FFFFFFFFFFFFFFF")
+		static constexpr auto max_digits	   = 16; // strlen("7FFFFFFFFFFFFFFF")
 		static constexpr auto prefix_codepoint = U'x';
 		static constexpr auto prefix		   = "x"sv;
+		static constexpr auto full_prefix	   = "0x"sv;
 	};
 
 	TOML_PURE_GETTER
@@ -10704,9 +11499,9 @@ TOML_ANON_NAMESPACE_START
 	TOML_INTERNAL_LINKAGE
 	std::string_view to_sv(const utf8_codepoint& cp) noexcept
 	{
-		if TOML_UNLIKELY(cp.value <= U'\x1F')
-			return impl::low_character_escape_table[cp.value];
-		else if TOML_UNLIKELY(cp.value == U'\x7F')
+		if (cp.value <= U'\x1F')
+			return impl::control_char_escapes[cp.value];
+		else if (cp.value == U'\x7F')
 			return "\\u007F"sv;
 		else
 			return std::string_view{ cp.bytes, cp.count };
@@ -10721,28 +11516,32 @@ TOML_ANON_NAMESPACE_START
 		return ""sv;
 	}
 
+	struct escaped_codepoint
+	{
+		const utf8_codepoint& cp;
+	};
+
 	template <typename T>
 	TOML_ATTR(nonnull)
 	TOML_INTERNAL_LINKAGE
-	TOML_NEVER_INLINE
 	void concatenate(char*& write_pos, char* const buf_end, const T& arg) noexcept
 	{
-		static_assert(impl::is_one_of<impl::remove_cvref<T>, std::string_view, int64_t, uint64_t, double>,
-					  "concatenate inputs are limited to std::string_view, int64_t, uint64_t and double to keep "
-					  "instantiations to a minimum as an anti-bloat measure (hint: to_sv will probably help)");
-
-		if (write_pos >= buf_end)
+		if TOML_UNLIKELY(write_pos >= buf_end)
 			return;
 
-		using arg_t = impl::remove_cvref<T>;
-		if constexpr (std::is_same_v<arg_t, std::string_view>)
+		using arg_type = impl::remove_cvref<T>;
+
+		// string views
+		if constexpr (std::is_same_v<arg_type, std::string_view>)
 		{
 			const auto max_chars = static_cast<size_t>(buf_end - write_pos);
 			const auto len		 = max_chars < arg.length() ? max_chars : arg.length();
 			std::memcpy(write_pos, arg.data(), len);
 			write_pos += len;
 		}
-		else if constexpr (std::is_floating_point_v<arg_t>)
+
+		// doubles
+		else if constexpr (std::is_same_v<arg_type, double>)
 		{
 #if TOML_FLOAT_CHARCONV
 			const auto result = std::to_chars(write_pos, buf_end, arg);
@@ -10750,12 +11549,14 @@ TOML_ANON_NAMESPACE_START
 #else
 			std::ostringstream ss;
 			ss.imbue(std::locale::classic());
-			ss.precision(std::numeric_limits<arg_t>::digits10 + 1);
+			ss.precision(std::numeric_limits<arg_type>::max_digits10);
 			ss << arg;
 			concatenate(write_pos, buf_end, to_sv(std::move(ss).str()));
 #endif
 		}
-		else if constexpr (std::is_integral_v<arg_t>)
+
+		// 64-bit integers
+		else if constexpr (impl::is_one_of<arg_type, int64_t, uint64_t>)
 		{
 #if TOML_INT_CHARCONV
 			const auto result = std::to_chars(write_pos, buf_end, arg);
@@ -10763,10 +11564,49 @@ TOML_ANON_NAMESPACE_START
 #else
 			std::ostringstream ss;
 			ss.imbue(std::locale::classic());
-			using cast_type = std::conditional_t<std::is_signed_v<arg_t>, int64_t, uint64_t>;
+			using cast_type = std::conditional_t<std::is_signed_v<arg_type>, int64_t, uint64_t>;
 			ss << static_cast<cast_type>(arg);
 			concatenate(write_pos, buf_end, to_sv(std::move(ss).str()));
 #endif
+		}
+
+		// escaped_codepoint
+		else if constexpr (std::is_same_v<arg_type, escaped_codepoint>)
+		{
+			if (arg.cp.value <= U'\x7F')
+				concatenate(write_pos, buf_end, to_sv(arg.cp));
+			else
+			{
+				auto val			= static_cast<uint_least32_t>(arg.cp.value);
+				const auto digits	= val > 0xFFFFu ? 8u : 4u;
+				constexpr auto mask = uint_least32_t{ 0xFu };
+				char buf[10]		= { '\\', digits > 4 ? 'U' : 'u' };
+				for (auto i = 2u + digits; i-- > 2u;)
+				{
+					const auto hexdig = val & mask;
+					buf[i]			  = static_cast<char>(hexdig >= 0xAu ? ('A' + (hexdig - 0xAu)) : ('0' + hexdig));
+					val >>= 4;
+				}
+				concatenate(write_pos, buf_end, std::string_view{ buf, digits + 2u });
+			}
+		}
+
+		// all other floats (fallback - coerce to double)
+		else if constexpr (std::is_floating_point_v<arg_type>)
+			concatenate(write_pos, buf_end, static_cast<double>(arg));
+
+		// all other integers (fallback - coerce to (u)int64_t)
+		else if constexpr (std::is_arithmetic_v<arg_type> && std::is_integral_v<arg_type>)
+		{
+			using cast_type = std::conditional_t<std::is_unsigned_v<arg_type>, uint64_t, int64_t>;
+			concatenate(write_pos, buf_end, static_cast<cast_type>(arg));
+		}
+
+		else
+		{
+			static_assert(
+				impl::dependent_false<T>,
+				"concatenate() inputs are limited to std::string_views, integers, floats, and escaped_codepoint");
 		}
 	}
 
@@ -10803,10 +11643,7 @@ TOML_ANON_NAMESPACE_START
 #endif
 		}
 
-		error_builder(const error_builder&) = delete;
-		error_builder(error_builder&&)		= delete;
-		error_builder& operator=(const error_builder&) = delete;
-		error_builder& operator=(error_builder&&) = delete;
+		TOML_DELETE_DEFAULTS(error_builder);
 	};
 
 	struct parse_scope
@@ -10827,20 +11664,13 @@ TOML_ANON_NAMESPACE_START
 			storage_ = parent_;
 		}
 
-		parse_scope(const parse_scope&) = delete;
-		parse_scope(parse_scope&&)		= delete;
-		parse_scope& operator=(const parse_scope&) = delete;
-		parse_scope& operator=(parse_scope&&) = delete;
+		TOML_DELETE_DEFAULTS(parse_scope);
 	};
-#define push_parse_scope_2(scope, line)                                                                                \
-	parse_scope ps_##line                                                                                              \
-	{                                                                                                                  \
-		current_scope, scope                                                                                           \
-	}
+#define push_parse_scope_2(scope, line) parse_scope ps_##line(current_scope, scope)
 #define push_parse_scope_1(scope, line) push_parse_scope_2(scope, line)
 #define push_parse_scope(scope)			push_parse_scope_1(scope, __LINE__)
 
-	struct parsed_key_buffer
+	struct parse_key_buffer
 	{
 		std::string buffer;
 		std::vector<std::pair<size_t, size_t>> segments;
@@ -10888,31 +11718,48 @@ TOML_ANON_NAMESPACE_START
 		}
 	};
 
-	struct parse_depth_counter
+	struct depth_counter_scope
 	{
 		size_t& depth_;
 
 		TOML_NODISCARD_CTOR
-		explicit parse_depth_counter(size_t& depth) noexcept : depth_{ depth }
+		explicit depth_counter_scope(size_t& depth) noexcept //
+			: depth_{ depth }
 		{
 			depth_++;
 		}
 
-		~parse_depth_counter() noexcept
+		~depth_counter_scope() noexcept
 		{
 			depth_--;
 		}
 
-		parse_depth_counter(const parse_depth_counter&) = delete;
-		parse_depth_counter(parse_depth_counter&&)		= delete;
-		parse_depth_counter& operator=(const parse_depth_counter&) = delete;
-		parse_depth_counter& operator=(parse_depth_counter&&) = delete;
+		TOML_DELETE_DEFAULTS(depth_counter_scope);
 	};
 
 	struct parsed_string
 	{
 		std::string_view value;
 		bool was_multi_line;
+	};
+
+	struct table_vector_scope
+	{
+		std::vector<table*>& tables;
+
+		TOML_NODISCARD_CTOR
+		explicit table_vector_scope(std::vector<table*>& tables_, table& tbl) //
+			: tables{ tables_ }
+		{
+			tables.push_back(&tbl);
+		}
+
+		~table_vector_scope() noexcept
+		{
+			tables.pop_back();
+		}
+
+		TOML_DELETE_DEFAULTS(table_vector_scope);
 	};
 }
 TOML_ANON_NAMESPACE_END;
@@ -10928,7 +11775,7 @@ TOML_ANON_NAMESPACE_END;
 //    of toml++.
 
 #define is_eof()		 !cp
-#define assert_not_eof() assert_or_assume(cp != nullptr)
+#define assert_not_eof() TOML_ASSERT_ASSUME(cp != nullptr)
 #define return_if_eof(...)                                                                                             \
 	do                                                                                                                 \
 	{                                                                                                                  \
@@ -11037,8 +11884,9 @@ TOML_IMPL_NAMESPACE_START
 		const utf8_codepoint* cp = {};
 		std::vector<table*> implicit_tables;
 		std::vector<table*> dotted_key_tables;
+		std::vector<table*> open_inline_tables;
 		std::vector<array*> table_arrays;
-		parsed_key_buffer key_buffer;
+		parse_key_buffer key_buffer;
 		std::string string_buffer;
 		std::string recording_buffer; // for diagnostics
 		bool recording = false, recording_whitespace = true;
@@ -11062,10 +11910,7 @@ TOML_IMPL_NAMESPACE_START
 		void set_error_at(source_position pos, const T&... reason) const
 		{
 			static_assert(sizeof...(T) > 0);
-#if !TOML_EXCEPTIONS
-			if (err)
-				return;
-#endif
+			return_if_error();
 
 			error_builder builder{ current_scope };
 			(builder.append(reason), ...);
@@ -11089,7 +11934,7 @@ TOML_IMPL_NAMESPACE_START
 		void go_back(size_t count = 1) noexcept
 		{
 			return_if_error();
-			assert_or_assume(count);
+			TOML_ASSERT_ASSUME(count);
 
 			cp		 = reader.step_back(count);
 			prev_pos = cp->position;
@@ -11154,6 +11999,9 @@ TOML_IMPL_NAMESPACE_START
 			bool consumed = false;
 			while (!is_eof() && is_horizontal_whitespace(*cp))
 			{
+				if TOML_UNLIKELY(!is_ascii_horizontal_whitespace(*cp))
+					set_error_and_return_default("expected space or tab, saw '"sv, escaped_codepoint{ *cp }, "'"sv);
+
 				consumed = true;
 				advance_and_return_if_error({});
 			}
@@ -11164,19 +12012,26 @@ TOML_IMPL_NAMESPACE_START
 		{
 			return_if_error_or_eof({});
 
-			if (!is_vertical_whitespace(*cp))
-				return false;
+			if TOML_UNLIKELY(is_match(*cp, U'\v', U'\f'))
+				set_error_and_return_default(
+					R"(vertical tabs '\v' and form-feeds '\f' are not legal line breaks in TOML)"sv);
 
 			if (*cp == U'\r')
 			{
 				advance_and_return_if_error({}); // skip \r
 
-				if (is_eof())
-					return true; // eof after \r is 'fine'
-				else if (*cp != U'\n')
-					set_error_and_return_default("expected \\n, saw '"sv, to_sv(*cp), "'"sv);
+				if TOML_UNLIKELY(is_eof())
+					set_error_and_return_default("expected '\\n' after '\\r', saw EOF"sv);
+
+				if TOML_UNLIKELY(*cp != U'\n')
+					set_error_and_return_default("expected '\\n' after '\\r', saw '"sv,
+												 escaped_codepoint{ *cp },
+												 "'"sv);
 			}
-			advance_and_return_if_error({}); // skip \n (or other single-character line ending)
+			else if (*cp != U'\n')
+				return false;
+
+			advance_and_return_if_error({}); // skip \n
 			return true;
 		}
 
@@ -11186,7 +12041,7 @@ TOML_IMPL_NAMESPACE_START
 
 			do
 			{
-				if (is_vertical_whitespace(*cp))
+				if (is_ascii_vertical_whitespace(*cp))
 					return consume_line_break();
 				else
 					advance();
@@ -11214,18 +12069,19 @@ TOML_IMPL_NAMESPACE_START
 					return true;
 				return_if_error({});
 
-				if constexpr (TOML_LANG_AT_LEAST(1, 0, 0))
-				{
-					// toml/issues/567 (disallow non-TAB control characters in comments)
-					if (is_nontab_control_character(*cp))
-						set_error_and_return_default(
-							"control characters other than TAB (U+0009) are explicitly prohibited"sv);
+#if TOML_LANG_AT_LEAST(1, 0, 0)
 
-					// toml/pull/720 (disallow surrogates in comments)
-					else if (is_unicode_surrogate(*cp))
-						set_error_and_return_default(
-							"unicode surrogates (U+D800 to U+DFFF) are explicitly prohibited"sv);
-				}
+				// toml/issues/567 (disallow non-TAB control characters in comments)
+				if TOML_UNLIKELY(is_nontab_control_character(*cp))
+					set_error_and_return_default(
+						"control characters other than TAB (U+0009) are explicitly prohibited in comments"sv);
+
+				// toml/pull/720 (disallow surrogates in comments)
+				else if TOML_UNLIKELY(is_unicode_surrogate(*cp))
+					set_error_and_return_default(
+						"unicode surrogates (U+D800 to U+DFFF) are explicitly prohibited in comments"sv);
+#endif
+
 				advance_and_return_if_error({});
 			}
 
@@ -11253,8 +12109,8 @@ TOML_IMPL_NAMESPACE_START
 		bool consume_digit_sequence(T* digits, size_t len)
 		{
 			return_if_error({});
-			assert_or_assume(digits);
-			assert_or_assume(len);
+			TOML_ASSERT_ASSUME(digits);
+			TOML_ASSERT_ASSUME(len);
 
 			for (size_t i = 0; i < len; i++)
 			{
@@ -11273,8 +12129,8 @@ TOML_IMPL_NAMESPACE_START
 		size_t consume_variable_length_digit_sequence(T* buffer, size_t max_len)
 		{
 			return_if_error({});
-			assert_or_assume(buffer);
-			assert_or_assume(max_len);
+			TOML_ASSERT_ASSUME(buffer);
+			TOML_ASSERT_ASSUME(max_len);
 
 			size_t i = {};
 			for (; i < max_len; i++)
@@ -11289,11 +12145,12 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		std::string_view parse_basic_string(bool multi_line)
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(*cp == U'"');
+			TOML_ASSERT_ASSUME(*cp == U'"');
 			push_parse_scope("string"sv);
 
 			// skip the '"'
@@ -11321,15 +12178,17 @@ TOML_IMPL_NAMESPACE_START
 					if (multi_line && is_whitespace(*cp))
 					{
 						consume_leading_whitespace();
-						if (!consume_line_break())
+
+						if TOML_UNLIKELY(!consume_line_break())
 							set_error_and_return_default(
 								"line-ending backslashes must be the last non-whitespace character on the line"sv);
+
 						skipping_whitespace = true;
 						return_if_error({});
 						continue;
 					}
 
-					bool skipped_escaped_codepoint = false;
+					bool skip_escaped_codepoint = true;
 					assert_not_eof();
 					switch (const auto escaped_codepoint = *cp)
 					{
@@ -11342,20 +12201,29 @@ TOML_IMPL_NAMESPACE_START
 						case U'"': str += '"'; break;
 						case U'\\': str += '\\'; break;
 
-						// unicode scalar sequences
-						case U'x':
-#if TOML_LANG_UNRELEASED // toml/pull/796 (\xHH unicode scalar sequences)
-							[[fallthrough]];
+#if TOML_LANG_UNRELEASED // toml/pull/790 (\e shorthand for \x1B)
+						case U'e': str += '\x1B'; break;
 #else
+						case U'e':
+							set_error_and_return_default(
+								"escape sequence '\\e' is not supported in TOML 1.0.0 and earlier"sv);
+#endif
+
+#if TOML_LANG_UNRELEASED // toml/pull/796 (\xHH unicode scalar sequences)
+						case U'x': [[fallthrough]];
+#else
+						case U'x':
 							set_error_and_return_default(
 								"escape sequence '\\x' is not supported in TOML 1.0.0 and earlier"sv);
 #endif
+
+						// unicode scalar sequences
 						case U'u': [[fallthrough]];
 						case U'U':
 						{
-							push_parse_scope("unicode scalar escape sequence"sv);
+							push_parse_scope("unicode scalar sequence"sv);
 							advance_and_return_if_error_or_eof({});
-							skipped_escaped_codepoint = true;
+							skip_escaped_codepoint = false;
 
 							uint32_t place_value =
 								escaped_codepoint == U'U' ? 0x10000000u : (escaped_codepoint == U'u' ? 0x1000u : 0x10u);
@@ -11363,47 +12231,52 @@ TOML_IMPL_NAMESPACE_START
 							while (place_value)
 							{
 								set_error_and_return_if_eof({});
-								if (!is_hexadecimal_digit(*cp))
+
+								if TOML_UNLIKELY(!is_hexadecimal_digit(*cp))
 									set_error_and_return_default("expected hex digit, saw '"sv, to_sv(*cp), "'"sv);
+
 								sequence_value += place_value * hex_to_dec(*cp);
 								place_value /= 16u;
 								advance_and_return_if_error({});
 							}
 
-							if (is_unicode_surrogate(sequence_value))
+							if TOML_UNLIKELY(is_unicode_surrogate(sequence_value))
 								set_error_and_return_default(
 									"unicode surrogates (U+D800 - U+DFFF) are explicitly prohibited"sv);
-							else if (sequence_value > 0x10FFFFu)
+							else if TOML_UNLIKELY(sequence_value > 0x10FFFFu)
 								set_error_and_return_default("values greater than U+10FFFF are invalid"sv);
-							else if (sequence_value <= 0x7Fu) // ascii
-								str += static_cast<char>(sequence_value & 0x7Fu);
-							else if (sequence_value <= 0x7FFu)
+
+							if (sequence_value < 0x80)
 							{
-								str += static_cast<char>(0xC0u | ((sequence_value >> 6) & 0x1Fu));
-								str += static_cast<char>(0x80u | (sequence_value & 0x3Fu));
+								str += static_cast<char>(sequence_value);
 							}
-							else if (sequence_value <= 0xFFFFu)
+							else if (sequence_value < 0x800u)
 							{
-								str += static_cast<char>(0xE0u | ((sequence_value >> 12) & 0x0Fu));
-								str += static_cast<char>(0x80u | ((sequence_value >> 6) & 0x1Fu));
-								str += static_cast<char>(0x80u | (sequence_value & 0x3Fu));
+								str += static_cast<char>((sequence_value >> 6) | 0xC0u);
+								str += static_cast<char>((sequence_value & 0x3Fu) | 0x80u);
 							}
-							else
+							else if (sequence_value < 0x10000u)
 							{
-								str += static_cast<char>(0xF0u | ((sequence_value >> 18) & 0x07u));
-								str += static_cast<char>(0x80u | ((sequence_value >> 12) & 0x3Fu));
-								str += static_cast<char>(0x80u | ((sequence_value >> 6) & 0x3Fu));
-								str += static_cast<char>(0x80u | (sequence_value & 0x3Fu));
+								str += static_cast<char>((sequence_value >> 12) | 0xE0u);
+								str += static_cast<char>(((sequence_value >> 6) & 0x3Fu) | 0x80u);
+								str += static_cast<char>((sequence_value & 0x3Fu) | 0x80u);
+							}
+							else if (sequence_value < 0x110000u)
+							{
+								str += static_cast<char>((sequence_value >> 18) | 0xF0u);
+								str += static_cast<char>(((sequence_value >> 12) & 0x3Fu) | 0x80u);
+								str += static_cast<char>(((sequence_value >> 6) & 0x3Fu) | 0x80u);
+								str += static_cast<char>((sequence_value & 0x3Fu) | 0x80u);
 							}
 							break;
 						}
 
-						// ???
+							// ???
+							TOML_UNLIKELY_CASE
 						default: set_error_and_return_default("unknown escape sequence '\\"sv, to_sv(*cp), "'"sv);
 					}
 
-					// skip the escaped character
-					if (!skipped_escaped_codepoint)
+					if (skip_escaped_codepoint)
 						advance_and_return_if_error_or_eof({});
 				}
 				else
@@ -11472,7 +12345,7 @@ TOML_IMPL_NAMESPACE_START
 					}
 
 					// handle line endings in multi-line mode
-					if (multi_line && is_vertical_whitespace(*cp))
+					if (multi_line && is_ascii_vertical_whitespace(*cp))
 					{
 						consume_line_break();
 						return_if_error({});
@@ -11482,17 +12355,17 @@ TOML_IMPL_NAMESPACE_START
 					}
 
 					// handle control characters
-					if (is_nontab_control_character(*cp))
+					if TOML_UNLIKELY(is_nontab_control_character(*cp))
 						set_error_and_return_default(
 							"unescaped control characters other than TAB (U+0009) are explicitly prohibited"sv);
 
-					// handle surrogates in strings (1.0.0 and later)
-					if constexpr (TOML_LANG_AT_LEAST(1, 0, 0))
-					{
-						if (is_unicode_surrogate(*cp))
-							set_error_and_return_default(
-								"unescaped unicode surrogates (U+D800 to U+DFFF) are explicitly prohibited"sv);
-					}
+#if TOML_LANG_AT_LEAST(1, 0, 0)
+
+					// handle surrogates in strings
+					if TOML_UNLIKELY(is_unicode_surrogate(*cp))
+						set_error_and_return_default(
+							"unescaped unicode surrogates (U+D800 to U+DFFF) are explicitly prohibited"sv);
+#endif
 
 					if (multi_line)
 					{
@@ -11514,11 +12387,12 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		std::string_view parse_literal_string(bool multi_line)
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(*cp == U'\'');
+			TOML_ASSERT_ASSUME(*cp == U'\'');
 			push_parse_scope("literal string"sv);
 
 			// skip the delimiter
@@ -11587,7 +12461,7 @@ TOML_IMPL_NAMESPACE_START
 				}
 
 				// handle line endings in multi-line mode
-				if (multi_line && is_vertical_whitespace(*cp))
+				if (multi_line && is_ascii_vertical_whitespace(*cp))
 				{
 					consume_line_break();
 					return_if_error({});
@@ -11596,17 +12470,16 @@ TOML_IMPL_NAMESPACE_START
 				}
 
 				// handle control characters
-				if (is_nontab_control_character(*cp))
+				if TOML_UNLIKELY(is_nontab_control_character(*cp))
 					set_error_and_return_default(
 						"control characters other than TAB (U+0009) are explicitly prohibited"sv);
 
-				// handle surrogates in strings (1.0.0 and later)
-				if constexpr (TOML_LANG_AT_LEAST(1, 0, 0))
-				{
-					if (is_unicode_surrogate(*cp))
-						set_error_and_return_default(
-							"unicode surrogates (U+D800 - U+DFFF) are explicitly prohibited"sv);
-				}
+#if TOML_LANG_AT_LEAST(1, 0, 0)
+
+				// handle surrogates in strings
+				if TOML_UNLIKELY(is_unicode_surrogate(*cp))
+					set_error_and_return_default("unicode surrogates (U+D800 - U+DFFF) are explicitly prohibited"sv);
+#endif
 
 				str.append(cp->bytes, cp->count);
 				advance_and_return_if_error({});
@@ -11622,7 +12495,7 @@ TOML_IMPL_NAMESPACE_START
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_string_delimiter(*cp));
+			TOML_ASSERT_ASSUME(is_string_delimiter(*cp));
 			push_parse_scope("string"sv);
 
 			// get the first three characters to determine the string type
@@ -11666,7 +12539,7 @@ TOML_IMPL_NAMESPACE_START
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_bare_key_character(*cp));
+			TOML_ASSERT_ASSUME(is_bare_key_character(*cp));
 
 			string_buffer.clear();
 
@@ -11688,7 +12561,7 @@ TOML_IMPL_NAMESPACE_START
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_match(*cp, U't', U'f', U'T', U'F'));
+			TOML_ASSERT_ASSUME(is_match(*cp, U't', U'f', U'T', U'F'));
 			push_parse_scope("boolean"sv);
 
 			start_recording(true);
@@ -11713,7 +12586,7 @@ TOML_IMPL_NAMESPACE_START
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_match(*cp, U'i', U'n', U'I', U'N', U'+', U'-'));
+			TOML_ASSERT_ASSUME(is_match(*cp, U'i', U'n', U'I', U'N', U'+', U'-'));
 			push_parse_scope("floating-point"sv);
 
 			start_recording(true);
@@ -11738,11 +12611,12 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		double parse_float()
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_match(*cp, U'+', U'-', U'.') || is_decimal_digit(*cp));
+			TOML_ASSERT_ASSUME(is_match(*cp, U'+', U'-', U'.') || is_decimal_digit(*cp));
 			push_parse_scope("floating-point"sv);
 
 			// sign
@@ -11751,7 +12625,7 @@ TOML_IMPL_NAMESPACE_START
 				advance_and_return_if_error_or_eof({});
 
 			// consume value chars
-			char chars[64];
+			char chars[utf8_buffered_reader::max_history_length];
 			size_t length			   = {};
 			const utf8_codepoint* prev = {};
 			bool seen_decimal = false, seen_exponent = false;
@@ -11767,8 +12641,13 @@ TOML_IMPL_NAMESPACE_START
 					advance_and_return_if_error_or_eof({});
 					continue;
 				}
-				else if (prev && *prev == U'_' && !is_decimal_digit(*cp))
+				else if TOML_UNLIKELY(prev && *prev == U'_' && !is_decimal_digit(*cp))
 					set_error_and_return_default("underscores must be followed by digits"sv);
+				else if TOML_UNLIKELY(length == sizeof(chars))
+					set_error_and_return_default("exceeds length limit of "sv,
+												 sizeof(chars),
+												 " digits"sv,
+												 (seen_exponent ? ""sv : " (consider using exponent notation)"sv));
 				else if (*cp == U'.')
 				{
 					// .1
@@ -11824,11 +12703,6 @@ TOML_IMPL_NAMESPACE_START
 				else
 					set_error_and_return_default("expected decimal digit, saw '"sv, to_sv(*cp), "'"sv);
 
-				if (length == sizeof(chars))
-					set_error_and_return_default("exceeds maximum length of "sv,
-												 static_cast<uint64_t>(sizeof(chars)),
-												 " characters"sv);
-
 				chars[length++] = static_cast<char>(cp->bytes[0]);
 				prev			= cp;
 				advance_and_return_if_error({});
@@ -11856,6 +12730,7 @@ TOML_IMPL_NAMESPACE_START
 				auto fc_result = std::from_chars(chars, chars + length, result);
 				switch (fc_result.ec)
 				{
+					TOML_LIKELY_CASE
 					case std::errc{}: // ok
 						return result * sign;
 
@@ -11893,11 +12768,12 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		double parse_hex_float()
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_match(*cp, U'0', U'+', U'-'));
+			TOML_ASSERT_ASSUME(is_match(*cp, U'0', U'+', U'-'));
 			push_parse_scope("hexadecimal floating-point"sv);
 
 #if TOML_LANG_UNRELEASED // toml/issues/562 (hexfloats)
@@ -11992,7 +12868,7 @@ TOML_IMPL_NAMESPACE_START
 					set_error_and_return_default("expected exponent digit or sign, saw '"sv, to_sv(*cp), "'"sv);
 				else if (current_fragment->length == sizeof(fragment::chars))
 					set_error_and_return_default("fragment exceeeds maximum length of "sv,
-												 static_cast<uint64_t>(sizeof(fragment::chars)),
+												 sizeof(fragment::chars),
 												 " characters"sv);
 				else
 					current_fragment->chars[current_fragment->length++] = static_cast<char>(cp->bytes[0]);
@@ -12069,6 +12945,7 @@ TOML_IMPL_NAMESPACE_START
 
 		template <uint64_t base>
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		int64_t parse_integer()
 		{
 			return_if_error({});
@@ -12100,10 +12977,13 @@ TOML_IMPL_NAMESPACE_START
 				if (*cp != traits::prefix_codepoint)
 					set_error_and_return_default("expected '"sv, traits::prefix, "', saw '"sv, to_sv(*cp), "'"sv);
 				advance_and_return_if_error_or_eof({});
+
+				if (!traits::is_digit(*cp))
+					set_error_and_return_default("expected digit, saw '"sv, to_sv(*cp), "'"sv);
 			}
 
-			// consume value chars
-			char chars[traits::buffer_length];
+			// consume digits
+			char digits[utf8_buffered_reader::max_history_length];
 			size_t length			   = {};
 			const utf8_codepoint* prev = {};
 			while (!is_eof() && !is_value_terminator(*cp))
@@ -12117,16 +12997,14 @@ TOML_IMPL_NAMESPACE_START
 					advance_and_return_if_error_or_eof({});
 					continue;
 				}
-				else if (prev && *prev == U'_' && !traits::is_digit(*cp))
+				else if TOML_UNLIKELY(prev && *prev == U'_' && !traits::is_digit(*cp))
 					set_error_and_return_default("underscores must be followed by digits"sv);
-				else if (!traits::is_digit(*cp))
+				else if TOML_UNLIKELY(!traits::is_digit(*cp))
 					set_error_and_return_default("expected digit, saw '"sv, to_sv(*cp), "'"sv);
-				else if (length == sizeof(chars))
-					set_error_and_return_default("exceeds maximum length of "sv,
-												 static_cast<uint64_t>(sizeof(chars)),
-												 " characters"sv);
+				else if TOML_UNLIKELY(length == sizeof(digits))
+					set_error_and_return_default("exceeds length limit of "sv, sizeof(digits), " digits"sv);
 				else
-					chars[length++] = static_cast<char>(cp->bytes[0]);
+					digits[length++] = static_cast<char>(cp->bytes[0]);
 
 				prev = cp;
 				advance_and_return_if_error({});
@@ -12139,60 +13017,84 @@ TOML_IMPL_NAMESPACE_START
 				set_error_and_return_default("underscores must be followed by digits"sv);
 			}
 
-			// check for leading zeroes
-			if constexpr (base == 10)
-			{
-				if (chars[0] == '0')
-					set_error_and_return_default("leading zeroes are prohibited"sv);
-			}
-
 			// single digits can be converted trivially
 			if (length == 1u)
 			{
+				int64_t result;
+
 				if constexpr (base == 16)
-					return static_cast<int64_t>(hex_to_dec(chars[0]));
-				else if constexpr (base <= 10)
-					return static_cast<int64_t>(chars[0] - '0');
+					result = static_cast<int64_t>(hex_to_dec(digits[0]));
+				else
+					result = static_cast<int64_t>(digits[0] - '0');
+
+				if constexpr (traits::is_signed)
+					result *= sign;
+
+				return result;
 			}
 
-			// otherwise do the thing
-			uint64_t result = {};
+			// bin, oct and hex allow leading zeroes so trim them first
+			const char* end = digits + length;
+			const char* msd = digits;
+			if constexpr (base != 10)
 			{
-				const char* msd = chars;
-				const char* end = msd + length;
 				while (msd < end && *msd == '0')
 					msd++;
 				if (msd == end)
 					return 0ll;
-				uint64_t power = 1;
-				while (--end >= msd)
-				{
-					if constexpr (base == 16)
-						result += power * hex_to_dec(*end);
-					else
-						result += power * static_cast<uint64_t>(*end - '0');
-					power *= base;
-				}
+			}
+
+			// decimal integers do not allow leading zeroes
+			else
+			{
+				if TOML_UNLIKELY(digits[0] == '0')
+					set_error_and_return_default("leading zeroes are prohibited"sv);
 			}
 
 			// range check
-			if (result > static_cast<uint64_t>((std::numeric_limits<int64_t>::max)()) + (sign < 0 ? 1ull : 0ull))
+			if TOML_UNLIKELY(static_cast<size_t>(end - msd) > traits::max_digits)
 				set_error_and_return_default("'"sv,
-											 std::string_view{ chars, length },
+											 traits::full_prefix,
+											 std::string_view{ digits, length },
 											 "' is not representable in 64 bits"sv);
 
-			if constexpr (traits::is_signed)
-				return static_cast<int64_t>(result) * sign;
-			else
-				return static_cast<int64_t>(result);
+			// do the thing
+			{
+				uint64_t result = {};
+				{
+					uint64_t power = 1;
+					while (--end >= msd)
+					{
+						if constexpr (base == 16)
+							result += power * hex_to_dec(*end);
+						else
+							result += power * static_cast<uint64_t>(*end - '0');
+
+						power *= base;
+					}
+				}
+
+				// range check
+				if TOML_UNLIKELY(result > static_cast<uint64_t>((std::numeric_limits<int64_t>::max)()) + (sign < 0 ? 1ull : 0ull))
+					set_error_and_return_default("'"sv,
+												 traits::full_prefix,
+												 std::string_view{ digits, length },
+												 "' is not representable in 64 bits"sv);
+
+				if constexpr (traits::is_signed)
+					return static_cast<int64_t>(result) * sign;
+				else
+					return static_cast<int64_t>(result);
+			}
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		date parse_date(bool part_of_datetime = false)
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_decimal_digit(*cp));
+			TOML_ASSERT_ASSUME(is_decimal_digit(*cp));
 			push_parse_scope("date"sv);
 
 			// "YYYY"
@@ -12213,8 +13115,7 @@ TOML_IMPL_NAMESPACE_START
 				set_error_and_return_default("expected 2-digit month, saw '"sv, to_sv(cp), "'"sv);
 			const auto month = digits[1] + digits[0] * 10u;
 			if (month == 0u || month > 12u)
-				set_error_and_return_default("expected month between 1 and 12 (inclusive), saw "sv,
-											 static_cast<uint64_t>(month));
+				set_error_and_return_default("expected month between 1 and 12 (inclusive), saw "sv, month);
 			const auto max_days_in_month = month == 2u
 											 ? (is_leap_year ? 29u : 28u)
 											 : (month == 4u || month == 6u || month == 9u || month == 11u ? 30u : 31u);
@@ -12231,9 +13132,9 @@ TOML_IMPL_NAMESPACE_START
 			const auto day = digits[1] + digits[0] * 10u;
 			if (day == 0u || day > max_days_in_month)
 				set_error_and_return_default("expected day between 1 and "sv,
-											 static_cast<uint64_t>(max_days_in_month),
+											 max_days_in_month,
 											 " (inclusive), saw "sv,
-											 static_cast<uint64_t>(day));
+											 day);
 
 			if (!part_of_datetime && !is_eof() && !is_value_terminator(*cp))
 				set_error_and_return_default("expected value-terminator, saw '"sv, to_sv(*cp), "'"sv);
@@ -12242,14 +13143,16 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		time parse_time(bool part_of_datetime = false)
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_decimal_digit(*cp));
+			TOML_ASSERT_ASSUME(is_decimal_digit(*cp));
 			push_parse_scope("time"sv);
 
-			static constexpr size_t max_digits = 9;
+			static constexpr size_t max_digits = 64; // far more than necessary but needed to allow fractional
+													 // millisecond truncation per the spec
 			uint32_t digits[max_digits];
 
 			// "HH"
@@ -12257,8 +13160,7 @@ TOML_IMPL_NAMESPACE_START
 				set_error_and_return_default("expected 2-digit hour, saw '"sv, to_sv(cp), "'"sv);
 			const auto hour = digits[1] + digits[0] * 10u;
 			if (hour > 23u)
-				set_error_and_return_default("expected hour between 0 to 59 (inclusive), saw "sv,
-											 static_cast<uint64_t>(hour));
+				set_error_and_return_default("expected hour between 0 to 59 (inclusive), saw "sv, hour);
 			set_error_and_return_if_eof({});
 
 			// ':'
@@ -12271,8 +13173,7 @@ TOML_IMPL_NAMESPACE_START
 				set_error_and_return_default("expected 2-digit minute, saw '"sv, to_sv(cp), "'"sv);
 			const auto minute = digits[1] + digits[0] * 10u;
 			if (minute > 59u)
-				set_error_and_return_default("expected minute between 0 and 59 (inclusive), saw "sv,
-											 static_cast<uint64_t>(minute));
+				set_error_and_return_default("expected minute between 0 and 59 (inclusive), saw "sv, minute);
 			auto time = toml::time{ hour, minute };
 
 			// ':'
@@ -12292,8 +13193,7 @@ TOML_IMPL_NAMESPACE_START
 				set_error_and_return_default("expected 2-digit second, saw '"sv, to_sv(cp), "'"sv);
 			const auto second = digits[1] + digits[0] * 10u;
 			if (second > 59u)
-				set_error_and_return_default("expected second between 0 and 59 (inclusive), saw "sv,
-											 static_cast<uint64_t>(second));
+				set_error_and_return_default("expected second between 0 and 59 (inclusive), saw "sv, second);
 			time.second = static_cast<decltype(time.second)>(second);
 
 			// '.' (early-exiting is allowed; fractional is optional)
@@ -12313,31 +13213,30 @@ TOML_IMPL_NAMESPACE_START
 			else if (!is_eof())
 			{
 				if (digit_count == max_digits && is_decimal_digit(*cp))
-					set_error_and_return_default("fractional component exceeds maximum precision of "sv,
-												 static_cast<uint64_t>(max_digits));
+					set_error_and_return_default("fractional component exceeds maximum precision of "sv, max_digits);
 				else if (!part_of_datetime && !is_value_terminator(*cp))
 					set_error_and_return_default("expected value-terminator, saw '"sv, to_sv(*cp), "'"sv);
 			}
-
 			uint32_t value = 0u;
 			uint32_t place = 1u;
-			for (auto i = digit_count; i-- > 0u;)
+			for (auto i = impl::min<size_t>(digit_count, 9u); i-- > 0u;)
 			{
 				value += digits[i] * place;
 				place *= 10u;
 			}
-			for (auto i = digit_count; i < max_digits; i++) // implicit zeros
+			for (auto i = digit_count; i < 9u; i++) // implicit zeros
 				value *= 10u;
 			time.nanosecond = value;
 			return time;
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		date_time parse_date_time()
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_decimal_digit(*cp));
+			TOML_ASSERT_ASSUME(is_decimal_digit(*cp));
 			push_parse_scope("date-time"sv);
 
 			// "YYYY-MM-DD"
@@ -12377,8 +13276,7 @@ TOML_IMPL_NAMESPACE_START
 					set_error_and_return_default("expected 2-digit hour, saw '"sv, to_sv(cp), "'"sv);
 				const auto hour = digits[1] + digits[0] * 10;
 				if (hour > 23)
-					set_error_and_return_default("expected hour between 0 and 23 (inclusive), saw "sv,
-												 static_cast<int64_t>(hour));
+					set_error_and_return_default("expected hour between 0 and 23 (inclusive), saw "sv, hour);
 				set_error_and_return_if_eof({});
 
 				// ':'
@@ -12391,8 +13289,7 @@ TOML_IMPL_NAMESPACE_START
 					set_error_and_return_default("expected 2-digit minute, saw '"sv, to_sv(cp), "'"sv);
 				const auto minute = digits[1] + digits[0] * 10;
 				if (minute > 59)
-					set_error_and_return_default("expected minute between 0 and 59 (inclusive), saw "sv,
-												 static_cast<int64_t>(minute));
+					set_error_and_return_default("expected minute between 0 and 59 (inclusive), saw "sv, minute);
 				offset.minutes = static_cast<decltype(offset.minutes)>((hour * 60 + minute) * sign);
 			}
 
@@ -12413,8 +13310,8 @@ TOML_IMPL_NAMESPACE_START
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(!is_control_character(*cp));
-			assert_or_assume(*cp != U'_');
+			TOML_ASSERT_ASSUME(!is_control_character(*cp));
+			TOML_ASSERT_ASSUME(*cp != U'_');
 
 			switch (cp->value)
 			{
@@ -12422,32 +13319,32 @@ TOML_IMPL_NAMESPACE_START
 				case U'[': return parse_array();
 
 				// inline tables
-				case U'{':
-					return parse_inline_table();
+				case U'{': return parse_inline_table();
 
-					// floats beginning with '.'
-				case U'.':
-					return node_ptr{ new value{ parse_float() } };
+				// floats beginning with '.'
+				case U'.': return node_ptr{ new value{ parse_float() } };
 
-					// strings
+				// strings
 				case U'"': [[fallthrough]];
-				case U'\'':
-					return node_ptr{ new value{ parse_string().value } };
+				case U'\'': return node_ptr{ new value{ parse_string().value } };
+
+				default:
+				{
+					const auto cp_upper = static_cast<uint_least32_t>(cp->value) & ~0x20u;
 
 					// bools
-				case U't': [[fallthrough]];
-				case U'f': [[fallthrough]];
-				case U'T': [[fallthrough]];
-				case U'F':
-					return node_ptr{ new value{ parse_boolean() } };
+					if (cp_upper == 70u || cp_upper == 84u) // F or T
+						return node_ptr{ new value{ parse_boolean() } };
 
 					// inf/nan
-				case U'i': [[fallthrough]];
-				case U'I': [[fallthrough]];
-				case U'n': [[fallthrough]];
-				case U'N': return node_ptr{ new value{ parse_inf_or_nan() } };
+					else if (cp_upper == 73u || cp_upper == 78u) // I or N
+						return node_ptr{ new value{ parse_inf_or_nan() } };
+
+					else
+						return nullptr;
+				}
 			}
-			return nullptr;
+			TOML_UNREACHABLE;
 		}
 
 		TOML_NODISCARD
@@ -12455,13 +13352,13 @@ TOML_IMPL_NAMESPACE_START
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(!is_value_terminator(*cp));
+			TOML_ASSERT_ASSUME(!is_value_terminator(*cp));
 			push_parse_scope("value"sv);
 
-			const parse_depth_counter depth_counter{ nested_values };
-			if (nested_values > max_nested_values)
+			const depth_counter_scope depth_counter{ nested_values };
+			if TOML_UNLIKELY(nested_values > max_nested_values)
 				set_error_and_return_default("exceeded maximum nested value depth of "sv,
-											 static_cast<uint64_t>(max_nested_values),
+											 max_nested_values,
 											 " (TOML_MAX_NESTED_VALUES)"sv);
 
 			// check if it begins with some control character
@@ -12479,8 +13376,8 @@ TOML_IMPL_NAMESPACE_START
 
 			do
 			{
-				assert_or_assume(!is_control_character(*cp));
-				assert_or_assume(*cp != U'_');
+				TOML_ASSERT_ASSUME(!is_control_character(*cp));
+				TOML_ASSERT_ASSUME(*cp != U'_');
 
 				// detect the value type and parse accordingly,
 				// starting with value types that can be detected
@@ -12512,8 +13409,8 @@ TOML_IMPL_NAMESPACE_START
 					begins_digit = 1 << 13,
 					begins_zero	 = 1 << 14,
 					signs_msk  = has_plus | has_minus,
-					bzero_msk  = begins_zero | has_digits,
-					bdigit_msk = begins_digit | has_digits,
+					bdigit_msk = has_digits | begins_digit,
+					bzero_msk  = bdigit_msk | begins_zero,
 				};
 				value_traits traits	 = has_nothing;
 				const auto has_any	 = [&](auto t) noexcept { return (traits & t) != has_nothing; };
@@ -12523,7 +13420,11 @@ TOML_IMPL_NAMESPACE_START
 				// examine the first character to get the 'begins with' traits
 				// (good fail-fast opportunity; all the remaining types begin with numeric digits or signs)
 				if (is_decimal_digit(*cp))
-					add_trait(*cp == U'0' ? begins_zero : begins_digit);
+				{
+					add_trait(begins_digit);
+					if (*cp == U'0')
+						add_trait(begins_zero);
+				}
 				else if (is_match(*cp, U'+', U'-'))
 					add_trait(begins_sign);
 				else
@@ -12533,11 +13434,11 @@ TOML_IMPL_NAMESPACE_START
 				char32_t chars[utf8_buffered_reader::max_history_length];
 				size_t char_count = {}, advance_count = {};
 				bool eof_while_scanning = false;
-				const auto scan			= [&]()
+				const auto scan			= [&]() noexcept(!TOML_COMPILER_EXCEPTIONS)
 				{
 					if (is_eof())
 						return;
-					assert_or_assume(!is_value_terminator(*cp));
+					TOML_ASSERT_ASSUME(!is_value_terminator(*cp));
 
 					do
 					{
@@ -12549,7 +13450,7 @@ TOML_IMPL_NAMESPACE_START
 								add_trait(has_digits);
 							else if (is_ascii_letter(c))
 							{
-								assert_or_assume((c >= U'a' && c <= U'z') || (c >= U'A' && c <= U'Z'));
+								TOML_ASSERT_ASSUME((c >= U'a' && c <= U'z') || (c >= U'A' && c <= U'Z'));
 								switch (static_cast<char32_t>(c | 32u))
 								{
 									case U'b':
@@ -12586,7 +13487,7 @@ TOML_IMPL_NAMESPACE_START
 							}
 							else if (c <= U':')
 							{
-								assert_or_assume(c < U'0' || c > U'9');
+								TOML_ASSERT_ASSUME(c < U'0' || c > U'9');
 								switch (c)
 								{
 									case U'+': add_trait(has_plus); break;
@@ -12601,15 +13502,19 @@ TOML_IMPL_NAMESPACE_START
 						advance_count++;
 						eof_while_scanning = is_eof();
 					}
-					while (advance_count < utf8_buffered_reader::max_history_length && !is_eof()
+					while (advance_count < (utf8_buffered_reader::max_history_length - 1u) && !is_eof()
 						   && !is_value_terminator(*cp));
 				};
 				scan();
 				return_if_error({});
 
 				// force further scanning if this could have been a date-time with a space instead of a T
-				if (char_count == 10u && traits == (bdigit_msk | has_minus) && chars[4] == U'-' && chars[7] == U'-'
-					&& !is_eof() && *cp == U' ')
+				if (char_count == 10u									 //
+					&& (traits | begins_zero) == (bzero_msk | has_minus) //
+					&& chars[4] == U'-'									 //
+					&& chars[7] == U'-'									 //
+					&& !is_eof()										 //
+					&& *cp == U' ')
 				{
 					const auto pre_advance_count = advance_count;
 					const auto pre_scan_traits	 = traits;
@@ -12646,14 +13551,12 @@ TOML_IMPL_NAMESPACE_START
 
 				// set the reader back to where we started
 				go_back(advance_count);
-				if (char_count < utf8_buffered_reader::max_history_length - 1u)
-					chars[char_count] = U'\0';
 
 				// if after scanning ahead we still only have one value character,
 				// the only valid value type is an integer.
 				if (char_count == 1u)
 				{
-					if (has_any(begins_zero | begins_digit))
+					if (has_any(begins_digit))
 					{
 						val.reset(new value{ static_cast<int64_t>(chars[0] - U'0') });
 						advance(); // skip the digit
@@ -12668,7 +13571,7 @@ TOML_IMPL_NAMESPACE_START
 
 				// now things that can be identified from two or more characters
 				return_if_error({});
-				assert_or_assume(char_count >= 2u);
+				TOML_ASSERT_ASSUME(char_count >= 2u);
 
 				// do some 'fuzzy matching' where there's no ambiguity, since that allows the specific
 				// typed parse functions to take over and show better diagnostics if there's an issue
@@ -12699,7 +13602,7 @@ TOML_IMPL_NAMESPACE_START
 					val.reset(new value{ i });
 					val->ref_cast<int64_t>().flags(flags);
 				}
-				else if (has_any(has_e) || (has_any(begins_zero | begins_digit) && chars[1] == U'.'))
+				else if (has_any(has_e) || (has_any(begins_digit) && chars[1] == U'.'))
 					val.reset(new value{ parse_float() });
 				else if (has_any(begins_sign))
 				{
@@ -12753,7 +13656,23 @@ TOML_IMPL_NAMESPACE_START
 					case bzero_msk: [[fallthrough]];
 					case bdigit_msk: [[fallthrough]];
 					case begins_sign | has_digits | has_minus: [[fallthrough]];
-					case begins_sign | has_digits | has_plus: val.reset(new value{ parse_integer<10>() }); break;
+					case begins_sign | has_digits | has_plus:
+					{
+						// if the value was so long we exhausted the history buffer it's reasonable to assume
+						// there was more and the value's actual type is impossible to identify without making the
+						// buffer bigger (since it could have actually been a float), so emit an error.
+						//
+						// (this will likely only come up during fuzzing and similar scenarios)
+						static constexpr size_t max_numeric_value_length =
+							utf8_buffered_reader::max_history_length - 2u;
+						if TOML_UNLIKELY(!eof_while_scanning && advance_count > max_numeric_value_length)
+							set_error_and_return_default("numeric value too long to identify type - cannot exceed "sv,
+														 max_numeric_value_length,
+														 " characters"sv);
+
+						val.reset(new value{ parse_integer<10>() });
+						break;
+					}
 
 					// hexadecimal integers
 					// 0x10
@@ -12911,26 +13830,16 @@ TOML_IMPL_NAMESPACE_START
 				return_after_error({});
 			}
 
-#if !TOML_LANG_AT_LEAST(1, 0, 0) // toml/issues/665 (heterogeneous arrays)
-			{
-				if (auto arr = val->as_array(); arr && !arr->is_homogeneous())
-				{
-					delete arr;
-					set_error_at(begin_pos, "arrays cannot contain values of different types before TOML 1.0.0"sv);
-					return_after_error({});
-				}
-			}
-#endif
-
 			val->source_ = { begin_pos, current_position(1), reader.source_path() };
 			return val;
 		}
 
+		TOML_NEVER_INLINE
 		bool parse_key()
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_bare_key_character(*cp) || is_string_delimiter(*cp));
+			TOML_ASSERT_ASSUME(is_bare_key_character(*cp) || is_string_delimiter(*cp));
 			push_parse_scope("key"sv);
 
 			key_buffer.clear();
@@ -13012,11 +13921,12 @@ TOML_IMPL_NAMESPACE_START
 		}
 
 		TOML_NODISCARD
+		TOML_NEVER_INLINE
 		table* parse_table_header()
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(*cp == U'[');
+			TOML_ASSERT_ASSUME(*cp == U'[');
 			push_parse_scope("table header"sv);
 
 			const source_position header_begin_pos = cp->position;
@@ -13094,13 +14004,21 @@ TOML_IMPL_NAMESPACE_START
 					node& p = pit->second;
 
 					if (auto tbl = p.as_table())
+					{
+						// adding to closed inline tables is illegal
+						if (tbl->is_inline() && !impl::find(open_inline_tables.begin(), open_inline_tables.end(), tbl))
+							set_error_and_return_default("cannot insert '"sv,
+														 to_sv(recording_buffer),
+														 "' into existing inline table"sv);
+
 						parent = tbl;
+					}
 					else if (auto arr = p.as_array(); arr && impl::find(table_arrays.begin(), table_arrays.end(), arr))
 					{
 						// table arrays are a special case;
 						// the spec dictates we select the most recently declared element in the array.
-						TOML_ASSERT(!arr->elems_.empty());
-						TOML_ASSERT(arr->elems_.back()->is_table());
+						TOML_ASSERT(!arr->empty());
+						TOML_ASSERT(arr->back().is_table());
 						parent = &arr->back().ref_cast<table>();
 					}
 					else
@@ -13213,11 +14131,12 @@ TOML_IMPL_NAMESPACE_START
 			}
 		}
 
+		TOML_NEVER_INLINE
 		bool parse_key_value_pair_and_insert(table* tbl)
 		{
 			return_if_error({});
 			assert_not_eof();
-			assert_or_assume(is_string_delimiter(*cp) || is_bare_key_character(*cp));
+			TOML_ASSERT_ASSUME(is_string_delimiter(*cp) || is_bare_key_character(*cp));
 			push_parse_scope("key-value pair"sv);
 
 			// read the key into the key buffer
@@ -13258,13 +14177,15 @@ TOML_IMPL_NAMESPACE_START
 					if (pit != tbl->end() && pit->first == segment)
 					{
 						table* p = pit->second.as_table();
-						if (!p
+
+						// redefinition
+						if TOML_UNLIKELY(!p
 							|| !(impl::find(dotted_key_tables.begin(), dotted_key_tables.end(), p)
 								 || impl::find(implicit_tables.begin(), implicit_tables.end(), p)))
 						{
 							set_error_at(key_buffer.starts[i],
 										 "cannot redefine existing "sv,
-										 to_sv(p->type()),
+										 to_sv(pit->second.type()),
 										 " as dotted key-value pair"sv);
 							return_after_error({});
 						}
@@ -13298,14 +14219,15 @@ TOML_IMPL_NAMESPACE_START
 				return_after_error({});
 			}
 
-			// create the key first since the key buffer will likely get overritten during value parsing (inline tables)
+			// create the key first since the key buffer will likely get overwritten during value parsing (inline
+			// tables)
 			auto last_key = make_key(key_buffer.size() - 1u);
 
 			// now we can actually parse the value
 			node_ptr val = parse_value();
 			return_if_error({});
 
-			tbl->map_.emplace_hint(it.raw_, std::move(last_key), std::move(val));
+			tbl->emplace_hint<node_ptr>(it, std::move(last_key), std::move(val));
 			return true;
 		}
 
@@ -13368,23 +14290,24 @@ TOML_IMPL_NAMESPACE_START
 			if (type == node_type::table)
 			{
 				auto& tbl = nde.ref_cast<table>();
-				if (tbl.inline_) // inline tables (and all their inline descendants) are already correctly terminated
+				if (tbl.is_inline()) // inline tables (and all their inline descendants) are already correctly
+									 // terminated
 					return;
 
 				auto end = nde.source_.end;
-				for (auto& [k, v] : tbl.map_)
+				for (auto&& [k, v] : tbl)
 				{
-					(void)k;
-					update_region_ends(*v);
-					if (end < v->source_.end)
-						end = v->source_.end;
+					TOML_UNUSED(k);
+					update_region_ends(v);
+					if (end < v.source_.end)
+						end = v.source_.end;
 				}
 			}
 			else // arrays
 			{
 				auto& arr = nde.ref_cast<array>();
 				auto end  = nde.source_.end;
-				for (auto& v : arr)
+				for (auto&& v : arr)
 				{
 					update_region_ends(v);
 					if (end < v.source_.end)
@@ -13442,7 +14365,7 @@ TOML_IMPL_NAMESPACE_START
 	{
 		return_if_error({});
 		assert_not_eof();
-		assert_or_assume(*cp == U'[');
+		TOML_ASSERT_ASSUME(*cp == U'[');
 		push_parse_scope("array"sv);
 
 		// skip opening '['
@@ -13494,7 +14417,7 @@ TOML_IMPL_NAMESPACE_START
 				prev = val;
 				if (!arr.capacity())
 					arr.reserve(4u);
-				arr.elems_.emplace_back(parse_value());
+				arr.emplace_back<node_ptr>(parse_value());
 			}
 		}
 
@@ -13507,15 +14430,17 @@ TOML_IMPL_NAMESPACE_START
 	{
 		return_if_error({});
 		assert_not_eof();
-		assert_or_assume(*cp == U'{');
+		TOML_ASSERT_ASSUME(*cp == U'{');
 		push_parse_scope("inline table"sv);
 
 		// skip opening '{'
 		advance_and_return_if_error_or_eof({});
 
 		node_ptr tbl_ptr{ new table{} };
-		table& tbl	= tbl_ptr->ref_cast<table>();
-		tbl.inline_ = true;
+		table& tbl = tbl_ptr->ref_cast<table>();
+		tbl.is_inline(true);
+		table_vector_scope table_scope{ open_inline_tables, tbl };
+
 		enum TOML_CLOSED_ENUM parse_elem : int
 		{
 			none,
@@ -13523,7 +14448,6 @@ TOML_IMPL_NAMESPACE_START
 			kvp
 		};
 		parse_elem prev = none;
-
 		while (!is_error())
 		{
 			if constexpr (TOML_LANG_UNRELEASED) // toml/issues/516 (newlines/trailing commas in inline tables)
@@ -13593,11 +14517,8 @@ TOML_IMPL_NAMESPACE_END;
 #undef TOML_RETURNS_BY_THROWING
 #undef advance_and_return_if_error
 #undef advance_and_return_if_error_or_eof
-#undef assert_or_assume
 #undef assert_not_eof
 #undef assert_not_error
-#undef bdigit_msk
-#undef bzero_msk
 #undef is_eof
 #undef is_error
 #undef parse_error_break
@@ -13611,7 +14532,6 @@ TOML_IMPL_NAMESPACE_END;
 #undef set_error_and_return
 #undef set_error_and_return_default
 #undef set_error_and_return_if_eof
-#undef signs_msk
 #undef utf8_buffered_reader_error_check
 #undef utf8_reader_error
 #undef utf8_reader_error_check
@@ -13651,7 +14571,7 @@ TOML_ANON_NAMESPACE_START
 
 		// open file with a custom-sized stack buffer
 		std::ifstream file;
-		alignas(32) char file_buffer[sizeof(void*) * 1024u];
+		TOML_OVERALIGNED char file_buffer[sizeof(void*) * 1024u];
 		file.rdbuf()->pubsetbuf(file_buffer, sizeof(file_buffer));
 		file.open(file_path_str, std::ifstream::in | std::ifstream::binary | std::ifstream::ate);
 		if (!file.is_open())
@@ -13777,6 +14697,8 @@ TOML_NAMESPACE_START
 }
 TOML_NAMESPACE_END;
 
+#undef TOML_OVERALIGNED
+
 #ifdef _MSC_VER
 #pragma pop_macro("min")
 #pragma pop_macro("max")
@@ -13799,6 +14721,20 @@ TOML_PUSH_WARNINGS;
 
 TOML_IMPL_NAMESPACE_START
 {
+	enum class TOML_CLOSED_FLAGS_ENUM formatted_string_traits : unsigned
+	{
+		none,
+		line_breaks	  = 1u << 0, // \n
+		tabs		  = 1u << 1, // \t
+		control_chars = 1u << 2, // also includes non-ascii vertical whitespace
+		single_quotes = 1u << 3,
+		non_bare	  = 1u << 4, // anything not satisfying "is bare key character"
+		non_ascii	  = 1u << 5, // any codepoint >= 128
+
+		all = (non_ascii << 1u) - 1u
+	};
+	TOML_MAKE_FLAGS(formatted_string_traits);
+
 	TOML_EXTERNAL_LINKAGE
 	formatter::formatter(const node* source_node,
 						 const parse_result* source_pr,
@@ -13813,7 +14749,7 @@ TOML_IMPL_NAMESPACE_START
 		  constants_{ &constants },
 		  config_{ config }
 	{
-		TOML_ASSERT(source_ != nullptr);
+		TOML_ASSERT_ASSUME(source_);
 
 		config_.flags = (config_.flags | constants_->mandatory_flags) & ~constants_->ignored_flags;
 
@@ -13877,65 +14813,236 @@ TOML_IMPL_NAMESPACE_START
 	TOML_EXTERNAL_LINKAGE
 	void formatter::print_string(std::string_view str, bool allow_multi_line, bool allow_bare)
 	{
-		auto literal = literal_strings_allowed();
 		if (str.empty())
 		{
-			print_to_stream(*stream_, literal ? "''"sv : "\"\""sv);
-			naked_newline_ = false;
+			print_unformatted(literal_strings_allowed() ? "''"sv : "\"\""sv);
 			return;
 		}
 
-		bool multi_line = allow_multi_line && !!(config_.flags & format_flags::allow_multi_line_strings);
-		const bool treat_raw_tab_as_control_char = !(config_.flags & format_flags::allow_real_tabs_in_strings);
-		if (multi_line || literal || treat_raw_tab_as_control_char || allow_bare)
+		// pre-scan the string to determine how we should output it
+		formatted_string_traits traits = {};
+
+		if (!allow_bare)
+			traits |= formatted_string_traits::non_bare;
+		bool unicode_allowed = unicode_strings_allowed();
+
+		// ascii fast path
+		if (is_ascii(str.data(), str.length()))
 		{
-			utf8_decoder decoder;
-			bool has_line_breaks   = false;
-			bool has_control_chars = false;
-			bool has_single_quotes = false;
-			for (size_t i = 0; i < str.length(); i++)
+			for (auto c : str)
 			{
-				decoder(static_cast<uint8_t>(str[i]));
-				if (decoder.error())
+				switch (c)
 				{
-					has_line_breaks	  = false;
-					has_control_chars = true; // force ""
-					has_single_quotes = true;
-					allow_bare		  = false;
-					break;
-				}
-				else if (decoder.has_code_point())
-				{
-					if (is_vertical_whitespace(decoder.codepoint))
-						has_line_breaks = true;
-					else if (is_nontab_control_character(decoder.codepoint)
-							 || (treat_raw_tab_as_control_char && decoder.codepoint == U'\t'))
-						has_control_chars = true;
-					else if (decoder.codepoint == U'\'')
-						has_single_quotes = true;
-					if (allow_bare)
-						allow_bare = is_bare_key_character(decoder.codepoint);
+					case '\n': traits |= formatted_string_traits::line_breaks; break;
+					case '\t': traits |= formatted_string_traits::tabs; break;
+					case '\'': traits |= formatted_string_traits::single_quotes; break;
+					default:
+					{
+						if TOML_UNLIKELY(is_control_character(c))
+							traits |= formatted_string_traits::control_chars;
+
+						if (!is_ascii_bare_key_character(static_cast<char32_t>(c)))
+							traits |= formatted_string_traits::non_bare;
+						break;
+					}
 				}
 
-				if (has_line_breaks && has_control_chars && has_single_quotes && !allow_bare)
+				static constexpr auto all_ascii_traits =
+					formatted_string_traits::all & ~formatted_string_traits::non_ascii;
+				if (traits == all_ascii_traits)
 					break;
 			}
-			multi_line = multi_line && has_line_breaks;
-			literal	   = literal && !has_control_chars && !(!multi_line && has_single_quotes);
 		}
 
-		if (allow_bare)
-			print_to_stream(*stream_, str);
-		else if (literal)
-			print_to_stream_bookended(*stream_, str, multi_line ? "'''"sv : "'"sv);
+		// unicode slow path
 		else
 		{
-			const auto quot = multi_line ? R"(""")"sv : R"(")"sv;
-			print_to_stream(*stream_, quot);
-			print_to_stream_with_escapes(*stream_, str);
-			print_to_stream(*stream_, quot);
+			traits |= formatted_string_traits::non_ascii;
+			utf8_decoder decoder;
+
+			// if the unicode is malformed just treat the string as a single-line non-literal and
+			// escape all non-ascii characters (to ensure round-tripping and help with diagnostics)
+			const auto bad_unicode = [&]() noexcept
+			{
+				traits &= ~formatted_string_traits::line_breaks;
+				traits |= formatted_string_traits::control_chars | formatted_string_traits::non_bare;
+				unicode_allowed = false;
+			};
+
+			for (auto c : str)
+			{
+				decoder(c);
+
+				if TOML_UNLIKELY(decoder.error())
+				{
+					bad_unicode();
+					break;
+				}
+
+				if (!decoder.has_code_point())
+					continue;
+
+				switch (decoder.codepoint)
+				{
+					case U'\n': traits |= formatted_string_traits::line_breaks; break;
+					case U'\t': traits |= formatted_string_traits::tabs; break;
+					case U'\'': traits |= formatted_string_traits::single_quotes; break;
+					default:
+					{
+						if TOML_UNLIKELY(is_control_character(decoder.codepoint)
+							|| is_non_ascii_vertical_whitespace(decoder.codepoint))
+							traits |= formatted_string_traits::control_chars;
+
+						if (!is_bare_key_character(decoder.codepoint))
+							traits |= formatted_string_traits::non_bare;
+						break;
+					}
+				}
+			}
+
+			if (decoder.needs_more_input())
+				bad_unicode();
 		}
-		naked_newline_ = false;
+
+		// if the string meets the requirements of being 'bare' we can emit a bare string
+		// (bare strings are composed of letters and numbers; no whitespace, control chars, quotes, etc)
+		if (!(traits & formatted_string_traits::non_bare)
+			&& (!(traits & formatted_string_traits::non_ascii) || unicode_allowed))
+		{
+			print_unformatted(str);
+			return;
+		}
+
+		// determine if this should be a multi-line string (triple-quotes)
+		const auto multi_line = allow_multi_line			 //
+							 && multi_line_strings_allowed() //
+							 && !!(traits & formatted_string_traits::line_breaks);
+
+		// determine if this should be a literal string (single-quotes with no escaping)
+		const auto literal = literal_strings_allowed()													   //
+						  && !(traits & formatted_string_traits::control_chars)							   //
+						  && (!(traits & formatted_string_traits::single_quotes) || multi_line)			   //
+						  && (!(traits & formatted_string_traits::tabs) || real_tabs_in_strings_allowed()) //
+						  && (!(traits & formatted_string_traits::non_ascii) || unicode_allowed);
+
+		// literal strings (single quotes, no escape codes)
+		if (literal)
+		{
+			const auto quot = multi_line ? R"(''')"sv : R"(')"sv;
+			print_unformatted(quot);
+			print_unformatted(str);
+			print_unformatted(quot);
+			return;
+		}
+
+		// anything from here down is a non-literal string, so requires iteration and escaping.
+		print_unformatted(multi_line ? R"(""")"sv : R"(")"sv);
+
+		const auto real_tabs_allowed = real_tabs_in_strings_allowed();
+
+		// ascii fast path
+		if (!(traits & formatted_string_traits::non_ascii))
+		{
+			for (auto c : str)
+			{
+				switch (c)
+				{
+					case '"': print_to_stream(*stream_, R"(\")"sv); break;
+					case '\\': print_to_stream(*stream_, R"(\\)"sv); break;
+					case '\x7F': print_to_stream(*stream_, R"(\u007F)"sv); break;
+					case '\t': print_to_stream(*stream_, real_tabs_allowed ? "\t"sv : R"(\t)"sv); break;
+					case '\n': print_to_stream(*stream_, multi_line ? "\n"sv : R"(\n)"sv); break;
+					default:
+					{
+						// control characters from lookup table
+						if TOML_UNLIKELY(c >= '\x00' && c <= '\x1F')
+							print_to_stream(*stream_, control_char_escapes[c]);
+
+						// regular characters
+						else
+							print_to_stream(*stream_, c);
+					}
+				}
+			}
+		}
+
+		// unicode slow path
+		else
+		{
+			utf8_decoder decoder;
+			const char* cp_start = str.data();
+			const char* cp_end	 = cp_start;
+			for (auto c : str)
+			{
+				decoder(c);
+				cp_end++;
+
+				// if the decoder encounters malformed unicode just emit raw bytes and
+				if (decoder.error())
+				{
+					while (cp_start != cp_end)
+					{
+						print_to_stream(*stream_, R"(\u00)"sv);
+						print_to_stream(*stream_,
+										static_cast<uint8_t>(*cp_start),
+										value_flags::format_as_hexadecimal,
+										2);
+						cp_start++;
+					}
+					decoder.reset();
+					continue;
+				}
+
+				if (!decoder.has_code_point())
+					continue;
+
+				switch (decoder.codepoint)
+				{
+					case U'"': print_to_stream(*stream_, R"(\")"sv); break;
+					case U'\\': print_to_stream(*stream_, R"(\\)"sv); break;
+					case U'\x7F': print_to_stream(*stream_, R"(\u007F)"sv); break;
+					case U'\t': print_to_stream(*stream_, real_tabs_allowed ? "\t"sv : R"(\t)"sv); break;
+					case U'\n': print_to_stream(*stream_, multi_line ? "\n"sv : R"(\n)"sv); break;
+					default:
+					{
+						// control characters from lookup table
+						if TOML_UNLIKELY(decoder.codepoint <= U'\x1F')
+							print_to_stream(*stream_,
+											control_char_escapes[static_cast<uint_least32_t>(decoder.codepoint)]);
+
+						// escaped unicode characters
+						else if (decoder.codepoint > U'\x7F'
+								 && (!unicode_allowed || is_non_ascii_vertical_whitespace(decoder.codepoint)))
+						{
+							if (static_cast<uint_least32_t>(decoder.codepoint) > 0xFFFFu)
+							{
+								print_to_stream(*stream_, R"(\U)"sv);
+								print_to_stream(*stream_,
+												static_cast<uint_least32_t>(decoder.codepoint),
+												value_flags::format_as_hexadecimal,
+												8);
+							}
+							else
+							{
+								print_to_stream(*stream_, R"(\u)"sv);
+								print_to_stream(*stream_,
+												static_cast<uint_least32_t>(decoder.codepoint),
+												value_flags::format_as_hexadecimal,
+												4);
+							}
+						}
+
+						// regular characters
+						else
+							print_to_stream(*stream_, cp_start, static_cast<size_t>(cp_end - cp_start));
+					}
+				}
+
+				cp_start = cp_end;
+			}
+		}
+
+		print_unformatted(multi_line ? R"(""")"sv : R"(")"sv);
 	}
 
 	TOML_EXTERNAL_LINKAGE
@@ -14001,7 +15108,12 @@ TOML_IMPL_NAMESPACE_START
 			case fp_class::neg_inf: inf_nan = &constants_->float_neg_inf; break;
 			case fp_class::pos_inf: inf_nan = &constants_->float_pos_inf; break;
 			case fp_class::nan: inf_nan = &constants_->float_nan; break;
-			case fp_class::ok: print_to_stream(*stream_, *val); break;
+			case fp_class::ok:
+				print_to_stream(*stream_,
+								*val,
+								value_flags::none,
+								!!(config_.flags & format_flags::relaxed_float_precision));
+				break;
 			default: TOML_UNREACHABLE;
 		}
 
@@ -14384,7 +15496,7 @@ TOML_NAMESPACE_START
 			size_t child_table_array_count{};
 			for (auto&& [child_k, child_v] : child_tbl)
 			{
-				(void)child_k;
+				TOML_UNUSED(child_k);
 				const auto child_type = child_v.type();
 				TOML_ASSUME(child_type != node_type::none);
 				switch (child_type)
@@ -14789,6 +15901,7 @@ TOML_POP_WARNINGS;
 #undef TOML_ANON_NAMESPACE_START
 #undef TOML_ARM
 #undef TOML_ASSERT
+#undef TOML_ASSERT_ASSUME
 #undef TOML_ASSUME
 #undef TOML_ASYMMETRICAL_EQUALITY_OPS
 #undef TOML_ATTR
@@ -14796,16 +15909,16 @@ TOML_POP_WARNINGS;
 #undef TOML_CLOSED_ENUM
 #undef TOML_CLOSED_FLAGS_ENUM
 #undef TOML_COMPILER_EXCEPTIONS
-#undef TOML_CONCAT
-#undef TOML_CONCAT_1
 #undef TOML_CONST_GETTER
 #undef TOML_CONST_INLINE_GETTER
 #undef TOML_CONSTRAINED_TEMPLATE
-#undef TOML_CPP
+#undef TOML_CPP_VERSION
+#undef TOML_DELETE_DEFAULTS
 #undef TOML_DISABLE_ARITHMETIC_WARNINGS
 #undef TOML_DISABLE_CODE_ANALYSIS_WARNINGS
 #undef TOML_DISABLE_SPAM_WARNINGS
 #undef TOML_DISABLE_SPAM_WARNINGS_CLANG_10
+#undef TOML_DISABLE_SPAM_WARNINGS_CLANG_11
 #undef TOML_DISABLE_SUGGEST_ATTR_WARNINGS
 #undef TOML_DISABLE_SWITCH_WARNINGS
 #undef TOML_DISABLE_WARNINGS
@@ -14814,8 +15927,6 @@ TOML_POP_WARNINGS;
 #undef TOML_ENABLE_WARNINGS
 #undef TOML_EVAL_BOOL_0
 #undef TOML_EVAL_BOOL_1
-#undef TOML_EXTERN
-#undef TOML_EXTERN_NOEXCEPT
 #undef TOML_EXTERNAL_LINKAGE
 #undef TOML_FLAGS_ENUM
 #undef TOML_FLOAT_CHARCONV
@@ -14847,13 +15958,12 @@ TOML_POP_WARNINGS;
 #undef TOML_LAUNDER
 #undef TOML_LIFETIME_HOOKS
 #undef TOML_LIKELY
+#undef TOML_LIKELY_CASE
 #undef TOML_MAKE_FLAGS
 #undef TOML_MAKE_FLAGS_
 #undef TOML_MAKE_VERSION
 #undef TOML_MSVC
 #undef TOML_NAMESPACE
-#undef TOML_NAMESPACE_END
-#undef TOML_NAMESPACE_START
 #undef TOML_NEVER_INLINE
 #undef TOML_NODISCARD
 #undef TOML_NODISCARD_CTOR
@@ -14883,7 +15993,9 @@ TOML_POP_WARNINGS;
 #undef TOML_TRIVIAL_ABI
 #undef TOML_UINT128
 #undef TOML_UNLIKELY
+#undef TOML_UNLIKELY_CASE
 #undef TOML_UNREACHABLE
+#undef TOML_UNUSED
 #endif
 
 #endif // TOMLPLUSPLUS_H

@@ -1,5 +1,53 @@
 #include "utilities.hpp"
+#include "sol/sol.hpp"
 #include "toml.hpp"
+#include <iostream>
+#include <magicEnum/magic_enum.hpp>
+#include <map>
+
+using toml::format_flags;
+
+static std::map<format_flags, bool> defaultFlags = std::map<toml::format_flags, bool> {
+	{ format_flags::quote_dates_and_times, true },
+	{ format_flags::quote_infinities_and_nans, false },
+	{ format_flags::allow_literal_strings, false },
+	{ format_flags::allow_multi_line_strings, false },
+	{ format_flags::allow_real_tabs_in_strings, false },
+	{ format_flags::allow_unicode_strings, true },
+	{ format_flags::allow_binary_integers, true },
+	{ format_flags::allow_hexadecimal_integers, true },
+	{ format_flags::allow_octal_integers, true },
+	{ format_flags::indent_sub_tables, false },
+	{ format_flags::indentation, true },
+	{ format_flags::relaxed_float_precision, false },
+};
+
+// Based on https://codereview.stackexchange.com/a/263761
+std::string camelCase(std::string s) noexcept {
+	bool tail = false;
+	std::size_t n = 0;
+
+	for (unsigned char c : s) {
+		if (c == '-' || c == '_') {
+			tail = false;
+		} else if (tail) {
+			s[n++] = c;
+		} else {
+			tail = true;
+
+			if (/* Don't uppercase first letter */ n != 0) {
+				s[n++] = std::toupper(c);
+			} else {
+				s[n++] = c;
+			}
+		}
+	}
+
+	s.resize(n);
+	return s;
+}
+
+std::string camelCase(std::string_view s) noexcept { return camelCase(std::string(s)); }
 
 std::string sourcePositionToString(toml::source_position s) {
 	return "line " + std::to_string(s.line) + ", column " + std::to_string(s.column);
@@ -28,51 +76,49 @@ void parseErrorToTable(toml::parse_error e, sol::table & table) {
 	endTable["column"] = source.end.column;
 	table["begin"] = beginTable;
 	table["end"] = endTable;
-	// table["formattedReason"] = parseErrorToString(e);
+}
+
+inline toml::format_flags defaultFormatFlags() {
+	auto flags = format_flags();
+
+	for (auto [flag, isAllowed] : defaultFlags) {
+		flags |= isAllowed ? flag : flags;
+	}
+
+	return flags;
+}
+
+void addFlag(toml::format_flags & flags, sol::table & flagsTable, toml::format_flags flagToAdd) {
+	auto tableFlag = flagsTable[camelCase(magic_enum::enum_name(flagToAdd))];
+
+	if (tableFlag.valid()) {
+		flags |= tableFlag.get<bool>() ? flagToAdd : flags;
+	} else {
+		// Use default
+		flags |= defaultFlags[flagToAdd] ? flagToAdd : flags;
+	};
 }
 
 toml::format_flags tableToFormatFlags(sol::optional<sol::table> t) {
-	auto flags = toml::format_flags();
+	auto flags = format_flags();
 
 	// Set default flags.
 	if (!t) {
-		flags |= toml::format_flags::quote_dates_and_times;
-		flags |= toml::format_flags::allow_binary_integers;
-		flags |= toml::format_flags::allow_hexadecimal_integers;
-		flags |= toml::format_flags::allow_octal_integers;
-		flags |= toml::format_flags::indentation;
+		flags = defaultFormatFlags();
 		return flags;
 	}
 
 	auto table = t.value();
-	if (table["quoteDatesAndTimes"] == true) {
-		flags |= toml::format_flags::quote_dates_and_times;
-	};
-	if (table["quoteInfinitesAndNaNs"] == true) {
-		flags |= toml::format_flags::quote_infinities_and_nans;
-	};
-	if (table["allowLiteralStrings"] == true) {
-		flags |= toml::format_flags::allow_literal_strings;
-	};
-	if (table["allowMultiLineStrings"] == true) {
-		flags |= toml::format_flags::allow_multi_line_strings;
-	};
-	if (table["allowRealTabsInStrings"] == true) {
-		flags |= toml::format_flags::allow_real_tabs_in_strings;
-	};
-	if (table["allowBinaryIntegers"] == true) {
-		flags |= toml::format_flags::allow_binary_integers;
-	};
-	if (table["allowOctalIntegers"] == true) { flags |= toml::format_flags::allow_octal_integers; };
-	if (table["allowHexadecimalIntegers"] == true) {
-		flags |= toml::format_flags::allow_hexadecimal_integers;
-	};
-	if (table["indentSubTables"] == true) { flags |= toml::format_flags::indent_sub_tables; };
-	if (table["indentArrayElements"] == true) {
-		flags |= toml::format_flags::indent_array_elements;
-	};
-	if (table["indentation"] == true) { flags |= toml::format_flags::indentation; }
 
+	// User passed an empty table to clear all flags.
+	if (table.empty()) return flags;
+
+	for (auto flag : magic_enum::enum_values<format_flags>()) {
+		addFlag(flags, table, flag);
+	}
+
+	// `format_flags::indentation` is not returned from `enum_values`.
+	addFlag(flags, table, format_flags::indentation);
 	return flags;
 }
 
@@ -93,11 +139,11 @@ std::optional<std::string> keyToString(sol::object key) {
 std::string solLuaDataTypeToString(sol::type type, bool withPrefix) {
 	switch (type) {
 		case sol::type::lightuserdata:
-			return std::string("lightUserData");
+			return "lightUserData";
 		case sol::type::userdata:
 			return "userData";
 		case sol::type::boolean:
-			return std::string(withPrefix ? "a " : "") + "foolean";
+			return std::string(withPrefix ? "a " : "") + "boolean";
 		case sol::type::function:
 			return std::string(withPrefix ? "a" : "") + "function";
 		case sol::type::lua_nil:
@@ -111,7 +157,7 @@ std::string solLuaDataTypeToString(sol::type type, bool withPrefix) {
 		case sol::type::table:
 			return std::string(withPrefix ? "a " : "") + "table";
 		case sol::type::poly:
-			return "Poly";
+			return "poly";
 		case sol::type::string:
 			return std::string(withPrefix ? "a " : "") + "string";
 	}
