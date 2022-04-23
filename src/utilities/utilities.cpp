@@ -1,9 +1,9 @@
 #include "utilities.hpp"
-#include <sol/sol.hpp>
 #include "toml.hpp"
 #include <iostream>
 #include <magicEnum/magic_enum.hpp>
 #include <map>
+#include <sol/sol.hpp>
 
 using toml::format_flags;
 

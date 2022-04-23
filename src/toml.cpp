@@ -120,9 +120,9 @@ extern "C" {
 		// Setup UserType - DateTime
 
 		sol::usertype<TOMLDateTime> tomlDateTime = module.new_usertype<TOMLDateTime>(
-			"DateTime",
-			sol::constructors<
-				TOMLDateTime(TOMLDate, TOMLTime), TOMLDateTime(TOMLDate, TOMLTime, TOMLTimeOffset)>());
+			"DateTime", sol::constructors<
+							TOMLDateTime(TOMLDate, TOMLTime),
+							TOMLDateTime(TOMLDate, TOMLTime, TOMLTimeOffset)>());
 
 		tomlDateTime["date"] = sol::property(&TOMLDateTime::getDate, &TOMLDateTime::setDate);
 		tomlDateTime["time"] = sol::property(&TOMLDateTime::getTime, &TOMLDateTime::setTime);
