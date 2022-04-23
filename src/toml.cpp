@@ -79,54 +79,56 @@ extern "C" {
 }
 #endif
 
-extern "C" __attribute__((visibility("default"))) int luaopen_toml(lua_State * L) {
-	sol::state_view state(L);
-	sol::table module = state.create_table();
+extern "C" {
+	LUALIB_API int luaopen_toml(lua_State * L) {
+		sol::state_view state(L);
+		sol::table module = state.create_table();
 
-	// Setup functions.
+		// Setup functions.
 
-	module["encode"] = &encode;
-	module["decode"] = &decode;
-	module["tomlToJSON"] = &tomlToJSON;
-	module["tomlToYAML"] = &tomlToYAML;
+		module["encode"] = &encode;
+		module["decode"] = &decode;
+		module["tomlToJSON"] = &tomlToJSON;
+		module["tomlToYAML"] = &tomlToYAML;
 
-	// Setup UserType - Date
+		// Setup UserType - Date
 
-	sol::usertype<TOMLDate> tomlDate = module.new_usertype<TOMLDate>(
-		"Date", sol::constructors<TOMLDate(uint16_t, uint8_t, uint8_t)>());
+		sol::usertype<TOMLDate> tomlDate = module.new_usertype<TOMLDate>(
+			"Date", sol::constructors<TOMLDate(uint16_t, uint8_t, uint8_t)>());
 
-	tomlDate["year"] = sol::property(&TOMLDate::getYear, &TOMLDate::setYear);
-	tomlDate["month"] = sol::property(&TOMLDate::getMonth, &TOMLDate::setMonth);
-	tomlDate["day"] = sol::property(&TOMLDate::getDay, &TOMLDate::setDay);
+		tomlDate["year"] = sol::property(&TOMLDate::getYear, &TOMLDate::setYear);
+		tomlDate["month"] = sol::property(&TOMLDate::getMonth, &TOMLDate::setMonth);
+		tomlDate["day"] = sol::property(&TOMLDate::getDay, &TOMLDate::setDay);
 
-	// Setup UserType - Time
+		// Setup UserType - Time
 
-	sol::usertype<TOMLTime> tomlTime = module.new_usertype<TOMLTime>(
-		"Time", sol::constructors<TOMLTime(uint8_t, uint8_t, uint8_t, uint16_t)>());
+		sol::usertype<TOMLTime> tomlTime = module.new_usertype<TOMLTime>(
+			"Time", sol::constructors<TOMLTime(uint8_t, uint8_t, uint8_t, uint16_t)>());
 
-	tomlTime["hour"] = sol::property(&TOMLTime::getHour, &TOMLTime::setHour);
-	tomlTime["minute"] = sol::property(&TOMLTime::getMinute, &TOMLTime::setMinute);
-	tomlTime["second"] = sol::property(&TOMLTime::getSecond, &TOMLTime::setSecond);
-	tomlTime["nanoSecond"] = sol::property(&TOMLTime::getNanoSecond, &TOMLTime::setNanoSecond);
+		tomlTime["hour"] = sol::property(&TOMLTime::getHour, &TOMLTime::setHour);
+		tomlTime["minute"] = sol::property(&TOMLTime::getMinute, &TOMLTime::setMinute);
+		tomlTime["second"] = sol::property(&TOMLTime::getSecond, &TOMLTime::setSecond);
+		tomlTime["nanoSecond"] = sol::property(&TOMLTime::getNanoSecond, &TOMLTime::setNanoSecond);
 
-	// Setup UserType - TimeOffset
+		// Setup UserType - TimeOffset
 
-	sol::usertype<TOMLTimeOffset> tomlTimeOffset = module.new_usertype<TOMLTimeOffset>(
-		"TimeOffset", sol::constructors<TOMLTimeOffset(int8_t, int8_t)>());
+		sol::usertype<TOMLTimeOffset> tomlTimeOffset = module.new_usertype<TOMLTimeOffset>(
+			"TimeOffset", sol::constructors<TOMLTimeOffset(int8_t, int8_t)>());
 
-	tomlTimeOffset["minutes"] = sol::property(&TOMLTimeOffset::minutes);
+		tomlTimeOffset["minutes"] = sol::property(&TOMLTimeOffset::minutes);
 
-	// Setup UserType - DateTime
+		// Setup UserType - DateTime
 
-	sol::usertype<TOMLDateTime> tomlDateTime = module.new_usertype<TOMLDateTime>(
-		"DateTime",
-		sol::constructors<
-			TOMLDateTime(TOMLDate, TOMLTime), TOMLDateTime(TOMLDate, TOMLTime, TOMLTimeOffset)>());
+		sol::usertype<TOMLDateTime> tomlDateTime = module.new_usertype<TOMLDateTime>(
+			"DateTime",
+			sol::constructors<
+				TOMLDateTime(TOMLDate, TOMLTime), TOMLDateTime(TOMLDate, TOMLTime, TOMLTimeOffset)>());
 
-	tomlDateTime["date"] = sol::property(&TOMLDateTime::getDate, &TOMLDateTime::setDate);
-	tomlDateTime["time"] = sol::property(&TOMLDateTime::getTime, &TOMLDateTime::setTime);
-	tomlDateTime["timeOffset"] =
-		sol::property(&TOMLDateTime::getTimeOffset, &TOMLDateTime::setTimeOffset);
+		tomlDateTime["date"] = sol::property(&TOMLDateTime::getDate, &TOMLDateTime::setDate);
+		tomlDateTime["time"] = sol::property(&TOMLDateTime::getTime, &TOMLDateTime::setTime);
+		tomlDateTime["timeOffset"] =
+			sol::property(&TOMLDateTime::getTimeOffset, &TOMLDateTime::setTimeOffset);
 
-	return module.push();
+		return module.push();
+	}
 }

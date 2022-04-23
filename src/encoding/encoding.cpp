@@ -1,5 +1,5 @@
 #include "encoding.hpp"
-#include "sol/sol.hpp"
+#include <sol/sol.hpp>
 #include "utilities/utilities.hpp"
 #include <cassert>
 #include <iostream>
