@@ -16,7 +16,7 @@ jobs:
                         "liblua5.1-0-dev lua5.1",
                     ]
         steps:
-            - uses: "actions/checkout@v2"
+            - uses: "actions/checkout@v3"
             - name: "Add Dependencies"
               run: |
                   export COMPILER=${{ matrix.compiler }}

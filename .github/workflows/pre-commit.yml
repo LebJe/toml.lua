@@ -5,7 +5,9 @@ jobs:
     PreCommit:
         runs-on: "macos-latest"
         steps:
-            - uses: "actions/checkout@v2"
+            - uses: "actions/checkout@v3"
+            - name: "CHeckout PR"
+              run: "gh pr checkout ${{ github.event.pull_request.number }}"
             - name: "Install Dependencies"
               run: "brew bundle --no-lock"
             - uses: "LebJe/pre-commit-composite-action@0.0.1"
