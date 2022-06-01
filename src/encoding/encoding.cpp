@@ -1,8 +1,8 @@
 #include "encoding.hpp"
-#include <sol/sol.hpp>
 #include "utilities/utilities.hpp"
 #include <cassert>
 #include <iostream>
+#include <sol/sol.hpp>
 
 void * luaValueToTomlNode(sol::object & luaValue) {
 	switch (luaValue.get_type()) {
