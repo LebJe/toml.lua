@@ -6,8 +6,10 @@ jobs:
         runs-on: "macos-latest"
         steps:
             - uses: "actions/checkout@v3"
-            - name: "CHeckout PR"
+            - name: "Checkout PR"
               run: "gh pr checkout ${{ github.event.pull_request.number }}"
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
             - name: "Install Dependencies"
               run: "brew bundle --no-lock"
             - uses: "LebJe/pre-commit-composite-action@0.0.1"
