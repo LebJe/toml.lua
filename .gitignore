@@ -4,3 +4,6 @@ compile_commands.json
 .vscode
 .cache
 *.rock
+*.so
+*.dll
+Brewfile.lock.json
