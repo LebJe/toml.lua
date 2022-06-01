@@ -4,3 +4,5 @@ compile_commands.json
 .vscode
 .cache
 *.rock
+*.so
+*.dll

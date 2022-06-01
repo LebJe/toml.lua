@@ -54,7 +54,8 @@ FetchContent_Declare(
 FetchContent_GetProperties(${TOML++})
 if(NOT ${TOML++}_POPULATED)
     message(STATUS "Cloning ${TOML++}")
-	FetchContent_Populate(${TOML++})
+	FetchContent_Populate(${TOML++}) 
+    FetchContent_MakeAvailable(${TOML++})
 endif()
 
 FetchContent_GetProperties(${SOL2})
