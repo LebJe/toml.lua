@@ -1,0 +1,17 @@
+name: "Build and Test on MacOS"
+on: ["push", "pull_request"]
+
+jobs:
+    RunTestsOnMacLua53:
+        name: "MacOS (Latest) - Lua 5.3"
+        runs-on: "macos-latest"
+        steps:
+            - uses: "actions/checkout@v2"
+            - name: "Add Dependencies"
+              run: |
+                  brew install lua luarocks
+                  luarocks install busted
+            - name: "Build Project"
+              run: "luarocks make"
+            - name: "Test Project"
+              run: "busted"
