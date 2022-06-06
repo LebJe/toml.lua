@@ -14,15 +14,14 @@ jobs:
               run: "powershell scripts/buildLuaJIT.ps1"
             - name: "Install LuaRocks"
               run: "powershell scripts/installLuaRocks.ps1; mkdir LuaRocks/tree"
-            - uses: "egor-tensin/vs-shell@v2"
             - name: "Create Import Library"
               shell: "cmd"
               run: |
                 scripts\dll2lib.bat 64 LuaJIT\bin\lua51.dll
+            - name: "Uninstall MinGW"
+              run: "choco uninstall -y mingw"
             - name: "Build Project"
-              run: |
-                choco uninstall -y mingw
-                choco install -y llvm
+              run: |  
                 LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path lua51.lib)"
                 LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config cmake_generator "Ninja Multi-Config"
                 LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
