@@ -1,0 +1,33 @@
+name: "Build and Test on Windows"
+on: ["push", "pull_request"]
+
+jobs:
+    RunTestsOnWindowsLuaJIT:
+        name: "Windows (Latest) - LuaJIT and LLVM"
+        runs-on: "windows-latest"
+        steps:
+            - uses: "actions/checkout@v3"
+            - uses: "seanmiddleditch/gha-setup-vsdevenv@master"
+            - name: "Install Dependencies"
+              run: "choco install -y mingw cmake ninja"
+            - name: "Build LuaJIT"
+              run: "powershell scripts/buildLuaJIT.ps1"
+            - name: "Install LuaRocks"
+              run: "powershell scripts/installLuaRocks.ps1; mkdir LuaRocks/tree"
+            - name: "Create Import Library"
+              uses: "egor-tensin/vs-shell@v2"
+              shell: "cmd"
+              run: |
+                scripts\dll2lib.bat 64 LuaJIT\bin\lua51.dll
+            - name: "Build Project"
+              run: |
+                choco uninstall -y mingw
+                choco install -y llvm
+                LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path lua51.lib)"
+                LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config cmake_generator "Ninja Multi-Config"
+                LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
+            # - name: "Install busted"
+            #   run: |
+            #     choco install -y mingw
+            #     LuaRocks/luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) install busted
+                

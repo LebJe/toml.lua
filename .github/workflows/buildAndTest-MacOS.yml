@@ -3,13 +3,16 @@ on: ["push", "pull_request"]
 
 jobs:
     RunTestsOnMacLua53:
-        name: "MacOS (Latest) - Lua 5.3"
+        name: "MacOS (Latest)"
         runs-on: "macos-latest"
+        strategy:
+          matrix:
+            lua: ["lua", "luajit"]
         steps:
             - uses: "actions/checkout@v3"
-            - name: "Add Dependencies"
+            - name: "Install Dependencies"
               run: |
-                  brew install lua luarocks
+                  brew install ${{ matrix.lua }} luarocks
                   luarocks install busted
             - name: "Build Project"
               run: "luarocks make"

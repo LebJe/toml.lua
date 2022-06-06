@@ -86,7 +86,7 @@ if(UNIX)
 else(UNIX)
     if(WIN32)
         set(PLAT "win32")
-        add_definitions(-DLUA_BUILD_AS_DLL -DLUA_LIB -D_CRT_SECURE_NO_WARNINGS)
+        add_compile_definitions(LUA_BUILD_AS_DLL LUA_LIB _CRT_SECURE_NO_WARNINGS)
     else(WIN32)
         set(PLAT "unsupported")
     endif(WIN32)
@@ -95,10 +95,8 @@ endif(UNIX)
 
 if(NOT LUA_INCLUDE_DIR OR (WIN32 AND NOT LUA_LIBRARIES))
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-    find_package(Lua REQUIRED)
+    find_package(Lua)
 endif()
-
-add_subdirectory(${${SOL2}_SOURCE_DIR})
 
 include_directories(${LUA_INCLUDE_DIR} src src/include ${${TOML++}_SOURCE_DIR} ${${SOL2}_SOURCE_DIR}/include)
 
@@ -113,7 +111,7 @@ set(SOURCES
 add_library(toml.lua MODULE ${SOURCES})
 source_group(src FILES ${SOURCES})
 
-target_link_libraries(toml.lua sol2 ${LUA_LIBRARIES})
+target_link_libraries(toml.lua ${LUA_LIBRARIES})
 
 if (LINK_FLAGS)
     set_target_properties(toml.lua PROPERTIES
