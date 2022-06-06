@@ -14,8 +14,8 @@ jobs:
               run: "powershell scripts/buildLuaJIT.ps1"
             - name: "Install LuaRocks"
               run: "powershell scripts/installLuaRocks.ps1; mkdir LuaRocks/tree"
+            - uses: "egor-tensin/vs-shell@v2"
             - name: "Create Import Library"
-              uses: "egor-tensin/vs-shell@v2"
               shell: "cmd"
               run: |
                 scripts\dll2lib.bat 64 LuaJIT\bin\lua51.dll
