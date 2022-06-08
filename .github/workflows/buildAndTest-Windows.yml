@@ -24,7 +24,10 @@ jobs:
               run: |  
                 LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path lua51.lib)"
                 LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config cmake_generator "Ninja Multi-Config"
-                LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
+                cmake.exe -S . -B build -G "Ninja Multi-Config" -DLUA_INCLUDE_DIR="$(Resolve-Path LuaJIT/include)" -DLINK_FLAGS="$(Resolve-Path lua51.lib)"
+                cmake --build build
+                ls build -Recurse
+        #LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
             # - name: "Install busted"
             #   run: |
             #     choco install -y mingw
