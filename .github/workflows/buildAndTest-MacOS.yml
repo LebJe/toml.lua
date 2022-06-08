@@ -6,8 +6,8 @@ jobs:
         name: "MacOS (Latest)"
         runs-on: "macos-latest"
         strategy:
-          matrix:
-            lua: ["lua", "luajit"]
+            matrix:
+                lua: ["lua", "luajit"]
         steps:
             - uses: "actions/checkout@v3"
             - name: "Install Dependencies"

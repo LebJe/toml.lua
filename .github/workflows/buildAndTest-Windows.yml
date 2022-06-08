@@ -17,19 +17,19 @@ jobs:
             - name: "Create Import Library"
               shell: "cmd"
               run: |
-                scripts\dll2lib.bat 64 LuaJIT\bin\lua51.dll
+                  scripts\dll2lib.bat 64 LuaJIT\bin\lua51.dll
             - name: "Uninstall MinGW"
               run: "choco uninstall -y mingw"
             - name: "Build Project"
               run: |
-                New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
-                $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
-                LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path lua51.lib)"
-                LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config cmake_generator "Ninja Multi-Config"
-                ls build.luarocks -Recurse
-                LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
+                  New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
+                  $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
+                  $env:LUA_LIBDIR="$(Resolve-Path LuaJIT\bin\)"
+                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path lua51.lib)"
+                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config cmake_generator "Ninja Multi-Config"
+                  ls build.luarocks -Recurse
+                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
             # - name: "Install busted"
             #   run: |
             #     choco install -y mingw
             #     LuaRocks/luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) install busted
-                
