@@ -13,8 +13,12 @@ jobs:
               run: "powershell scripts/buildLuaJIT.ps1"
             - name: "Install LuaRocks"
               run: "powershell scripts/installLuaRocks.ps1; mkdir LuaRocks/tree"
-            - name: "Uninstall MinGW"
-              run: "choco uninstall -y mingw; choco install -y --force llvm"
+            - name: "Set up Clang"
+              uses: "egor-tensin/setup-clang@v1"
+              with:
+                version: "latest"
+            # - name: "Uninstall MinGW"
+            #   run: "choco uninstall -y mingw; choco install -y --force llvm"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
