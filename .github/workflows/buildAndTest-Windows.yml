@@ -14,7 +14,7 @@ jobs:
             - name: "Install LuaRocks"
               run: "powershell scripts/installLuaRocks.ps1; mkdir LuaRocks/tree"
             - name: "Uninstall MinGW"
-              run: "choco uninstall -y mingw"
+              run: "choco uninstall -y mingw; choco install -y --force llvm"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
@@ -25,7 +25,7 @@ jobs:
                   LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree)
                   LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config
                   LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
-                  ls build.luarocks -Recurse
+                  ls build.luarocks\Debug -Recurse
             # - name: "Install busted"
             #   run: |
             #     choco install -y mingw
