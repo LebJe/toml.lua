@@ -20,7 +20,7 @@ jobs:
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
                   $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
                   LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
-                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path lua51.lib)"
+                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path libs\lua51.lib)"
                   LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config cmake_generator "Ninja Multi-Config"
                   LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree)
                   LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config
