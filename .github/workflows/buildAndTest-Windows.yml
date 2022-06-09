@@ -8,7 +8,7 @@ jobs:
         steps:
             - uses: "actions/checkout@v3"
             - name: "Install Dependencies"
-              run: "choco install -y mingw cmake ninja"
+              run: "choco install -y cmake ninja"
             - name: "Build LuaJIT"
               run: "powershell scripts/buildLuaJIT.ps1"
             - name: "Install LuaRocks"
@@ -17,20 +17,26 @@ jobs:
               uses: "egor-tensin/setup-clang@v1"
               with:
                 version: "latest"
-            # - name: "Uninstall MinGW"
-            #   run: "choco uninstall -y mingw; choco install -y --force llvm"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
+                  
+                  $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
+                  $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
                   $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
-                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
-                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config variables.LINK_FLAGS "$(Resolve-Path libs\lua51.lib)"
-                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config cmake_generator "Ninja Multi-Config"
-                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree)
-                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) config
-                  LuaRocks\luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) make
-                  ls build.luarocks\Debug -Recurse
-            # - name: "Install busted"
-            #   run: |
-            #     choco install -y mingw
-            #     LuaRocks/luarocks.exe --lua-dir $(Resolve-Path LuaJIT\) --tree $(Resolve-Path LuaRocks\tree) install busted
+                  
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path libs\lua51.lib)"
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
+            - name: "Set up MinGW"
+              uses: "egor-tensin/setup-mingw@v2"
+              with:
+                platform: "x64"
+            - name: "Install busted"
+              run: |
+                $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
+                $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
+                $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
+                
+                LuaRocks/luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install busted
