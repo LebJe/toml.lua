@@ -1,5 +1,7 @@
 @echo off
 
+REM From https://gist.github.com/Trass3r/8d0232a66b098530d07b0e48df6ad5ef#file-dll2lib-bat
+REM
 REM Usage: dll2lib [32|64] some-file.dll
 REM
 REM Generates some-file.lib from some-file.dll, making an intermediate
