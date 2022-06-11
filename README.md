@@ -45,10 +45,11 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 -   A C++ 17 compiler
 -   [CMake](https://cmake.org)
 -   Lua C headers (`lua.h`, `lualib.h`, and `lauxlib.h`)
--	Lua library (e.g. `liblua51.<so|dylib|dll>`)
+-   Lua library (e.g. `liblua51.<so|dylib|dll>`)
 -   Lua >= 5.1 or LuaJIT
 
 ### Install LuaJIT on Windows
+
 If you don't have LuaJIT, or your installation does not have the Lua headers, you can:
 
 1. Install [MinGW](https://www.mingw-w64.org/) (`choco install mingw`)
