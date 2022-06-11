@@ -17,12 +17,12 @@ jobs:
             - name: "Install LuaRocks"
               run: "powershell scripts/installLuaRocks.ps1; mkdir LuaRocks/tree"
             - name: "Set up LLVM"
-              if: ${{ matrix.compiler == "LLVM" }}
+              if: "${{ matrix.compiler == 'LLVM' }}"
               uses: "egor-tensin/setup-clang@v1"
               with:
                   version: "latest"
             - name: "Set up MinGW"
-              if: ${{ matrix.compiler == "MinGW" }}
+              if: "${{ matrix.compiler == 'MinGW' }}"
               uses: "egor-tensin/setup-mingw@v2"
               with:
                   version: "latest"
