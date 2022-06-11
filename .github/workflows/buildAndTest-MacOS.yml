@@ -2,7 +2,7 @@ name: "Build and Test on MacOS"
 on: ["push", "pull_request"]
 
 jobs:
-    RunTestsOnMacLua53:
+    RunTestsOnMac:
         name: "MacOS (Latest)"
         runs-on: "macos-latest"
         strategy:

@@ -6,6 +6,8 @@
 
 [![Build and Test on Linux](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml)
 
+[![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
+
 toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize [TOML](https://toml.io) files in Lua.
 
 ## Table of Contents
@@ -42,10 +44,26 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 
 -   A C++ 17 compiler
 -   [CMake](https://cmake.org)
--   `lua.h`, `lualib.h`, `lauxlib.h`
+-   Lua C headers (`lua.h`, `lualib.h`, and `lauxlib.h`)
+-	Lua library (e.g. `liblua51.<so|dylib|dll>`)
 -   Lua >= 5.1 or LuaJIT
 
+### Install LuaJIT on Windows
+If you don't have LuaJIT, or your installation does not have the Lua headers, you can:
+
+1. Install [MinGW](https://www.mingw-w64.org/) (`choco install mingw`)
+
+2. Run `scripts\buildLuaJIT.ps1`:
+
+```powershell
+powershell scripts\buildLuaJIT.ps1 -installDir "LuaJIT"
+```
+
+to build and install LuaJIT.
+
 ### LuaRocks
+
+#### MacOS and Linux
 
 ```bash
 luarocks install toml
@@ -53,17 +71,47 @@ luarocks install toml
 
 ### Manual Compilation
 
+#### MacOS and Linux
+
 1. Run `cmake -S . -B build -G <generator-name>` to generate the required files.
 
 > If you have a non standard Lua install location, add the environment variable `LUA_DIR` and have it point to the directory containing the `include` and `lib` folders for your Lua installation. For example:
 > `LUA_DIR=/usr/local/openresty/luajit cmake -S . -B build -G <generator-name>`
 
 2. Run `cmake --build build --config Release` to build the project.
-3. You will find the `toml.so` (or `toml.dll`) dynamic library in the `build` folder.
+3. You will find the `toml.so` dynamic library in the `build` folder.
 
 > Tip: use `cmake --help` to see a list of available generator names.
 
 > The above is based off of [xpol/lua-rapidjson's README](https://github.com/xpol/lua-rapidjson#usage-without-luarocks).
+
+#### Windows
+
+If LuaJIT is not installed, or your installation does not have the Lua headers, Follow [this part of the README](#install-luajit-on-windows) to install LuaJIT.
+
+##### Build with MinGW
+
+Install [MinGW](https://www.mingw-w64.org/) (`choco install mingw`), then:
+
+```powershell
+cmake.exe -S . -B build -G "MinGW Makefiles" -DLUA_INCLUDE_DIR="path\to\LuaJIT\include" -DLINK_FLAGS="path\to\LuaJIT\bin\lua51.dll"
+
+cmake.exe --build build --config Release
+```
+
+You'll find the `toml.dll` file in the `build` directory.
+
+##### Build with LLVM
+
+Install [LLVM](https://llvm.org) and [Ninja](https://ninja-build.org/) (`choco install llvm ninja`), then:
+
+```powershell
+cmake.exe -S . -B build -G "Ninja Multi-Config" -DLUA_INCLUDE_DIR="path\to\LuaJIT\include" -DLINK_FLAGS="path\to\toml.lua\libs\lua51.lib"
+
+cmake.exe --build build --config Release
+```
+
+You'll find the `toml.dll` file in the `build` directory.
 
 ## Usage
 
