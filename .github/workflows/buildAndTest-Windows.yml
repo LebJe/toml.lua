@@ -25,7 +25,7 @@ jobs:
               if: "${{ matrix.compiler == 'MinGW' }}"
               uses: "egor-tensin/setup-mingw@v2"
               with:
-                  version: "latest"
+                  platform: "x64"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
@@ -38,7 +38,7 @@ jobs:
                   
                   if ("${{ matrix.compiler }}" -eq "LLVM") {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path libs\lua51.lib)"
-                  } else if ("${{ matrix.compiler }}" -eq "MinGW") {
+                  } elseif ("${{ matrix.compiler }}" -eq "MinGW") {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path LuaJIT\bin\lua51.dll)"
                   }
                   
