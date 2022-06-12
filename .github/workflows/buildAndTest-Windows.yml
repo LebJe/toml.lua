@@ -7,7 +7,7 @@ jobs:
         runs-on: "windows-latest"
         strategy:
             matrix:
-                compiler: ["LLVM", "MinGW"]
+                compiler: ["LLVM", "MSVC"]
         steps:
             - uses: "actions/checkout@v3"
             - name: "Install Dependencies"
@@ -24,6 +24,9 @@ jobs:
               uses: "egor-tensin/setup-mingw@v2"
               with:
                   platform: "x64"
+            - name: "Set up MSVC"
+              if: "${{ matrix.compiler == 'MSVC' }}"
+              uses: "seanmiddleditch/gha-setup-vsdevenv@master"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
@@ -36,7 +39,7 @@ jobs:
 
                   if ("${{ matrix.compiler }}" -eq "LLVM") {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path libs\lua51.lib)"
-                  } elseif ("${{ matrix.compiler }}" -eq "MinGW") {
+                  } elseif (("${{ matrix.compiler }}" -eq "MinGW") -or ("${{ matrix.compiler }}" -eq "MSVC")) {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path LuaJIT\bin\lua51.dll)"
                   }
 
