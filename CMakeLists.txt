@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 set(FALLBACK_VERSION 0.0.1)
 set(TOML++ toml++)
 set(SOL2 sol2)
+set(MAGIC_ENUM magic_enum)
 
 if(NOT TOML_LUA_VERSION)
     find_package(Git)
@@ -51,6 +52,14 @@ FetchContent_Declare(
 	GIT_TAG "v3.2.3"
 )
 
+FetchContent_Declare(
+	${MAGIC_ENUM}
+	GIT_REPOSITORY "https://github.com/Neargye/magic_enum.git"
+	GIT_SHALLOW ON
+    GIT_SUBMODULES ""
+	GIT_TAG "v0.8.0"
+)
+
 FetchContent_GetProperties(${TOML++})
 if(NOT ${TOML++}_POPULATED)
     message(STATUS "Cloning ${TOML++}")
@@ -65,8 +74,11 @@ if(NOT ${SOL2}_POPULATED)
     FetchContent_MakeAvailable(${SOL2})
 endif()
 
-if(WIN32)
-    set(SOL2_BUILD_LUA TRUE)
+FetchContent_GetProperties(${MAGIC_ENUM})
+if(NOT ${MAGIC_ENUM}_POPULATED)
+    message(STATUS "Cloning ${MAGIC_ENUM}")
+	FetchContent_Populate(${MAGIC_ENUM})
+    FetchContent_MakeAvailable(${MAGIC_ENUM})
 endif()
 
 if(UNIX)
@@ -98,7 +110,7 @@ if(NOT LUA_INCLUDE_DIR OR (WIN32 AND NOT LUA_LIBRARIES))
     find_package(Lua)
 endif()
 
-include_directories(${LUA_INCLUDE_DIR} src src/include ${${TOML++}_SOURCE_DIR} ${${SOL2}_SOURCE_DIR}/include)
+include_directories(${LUA_INCLUDE_DIR} src src/include ${${TOML++}_SOURCE_DIR} ${${SOL2}_SOURCE_DIR}/include ${${MAGIC_ENUM}_SOURCE_DIR}/include)
 
 set(SOURCES
     src/toml.cpp

@@ -341,15 +341,15 @@ Passing an empty table removes all options, while not providing a table will use
 
 ## Licenses
 
-The [toml++](https://github.com/marzer/tomlplusplus/) license is available in the `tomlplusplus` directory in the `LICENSE` file.
+The [toml++](https://github.com/marzer/tomlplusplus/) license is available at [https://github.com/marzer/tomlplusplus/blob/maater/LICENSE](https://github.com/marzer/tomlplusplus/blob/maater/LICENSE).
 
-The [sol2](https://github.com/ThePhD/sol2) license is available in the `sol2` directory in the `LICENSE.txt` file.
+The [sol2](https://github.com/ThePhD/sol2) license is available at [https://github.com/ThePhD/sol2/blob/develop/LICENSE.txt](https://github.com/ThePhD/sol2/blob/develop/LICENSE.txt).
 
-The [magic_enum](https://github.com/Neargye/magic_enum) license is available in [its repository](https://github.com/Neargye/magic_enum/blob/master/LICENSE).
+The [magic_enum](https://github.com/Neargye/magic_enum) license is available at [https://github.com/Neargye/magic_enum/blob/master/LICENSE](https://github.com/Neargye/magic_enum/blob/master/LICENSE).
 
 ## Contributing
 
-Before committing, please install [pre-commit](https://pre-commit.com), [clang-format](https://clang.llvm.org/docs/ClangFormat.html), [StyLua](https://github.com/JohnnyMorganz/StyLua), and [Prettier](https://prettier.io), then install the pre-commit hook:
+Before committing, please install [pre-commit](https://pre-commit.com), [clang-format](https://clang.llvm.org/docs/ClangFormat.html), [StyLua](https://github.com/JohnnyMorganz/StyLua), and [Prettier](https://prettier.io), then install the pre-commit hooks. On MacOS, it would look like:
 
 ```bash
 $ brew bundle # install the packages specified in Brewfile
