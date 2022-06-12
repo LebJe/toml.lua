@@ -1,7 +1,7 @@
 #include "utilities.hpp"
 #include "toml.hpp"
 #include <iostream>
-#include <magicEnum/magic_enum.hpp>
+#include <magic_enum.hpp>
 #include <map>
 #include <sol/sol.hpp>
 

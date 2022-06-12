@@ -6,5 +6,6 @@ compile_commands.json
 *.rock
 *.so
 *.dll
+
 Brewfile.lock.json
 .vscode

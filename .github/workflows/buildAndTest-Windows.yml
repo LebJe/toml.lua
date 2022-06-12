@@ -1,0 +1,58 @@
+name: "Build and Test on Windows"
+on: ["push", "pull_request"]
+
+jobs:
+    RunTestsOnWindows:
+        name: "Windows (Latest) - LuaJIT"
+        runs-on: "windows-latest"
+        strategy:
+            matrix:
+                compiler: ["LLVM"]
+        steps:
+            - uses: "actions/checkout@v3"
+            - name: "Install Dependencies"
+              run: "choco install -y cmake ninja"
+            - name: "Build LuaJIT"
+              run: "powershell scripts/buildLuaJIT.ps1"
+            - name: "Install LuaRocks"
+              run: "powershell scripts/installLuaRocks.ps1; mkdir LuaRocks/tree"
+            - name: "Set up LLVM"
+              if: "${{ matrix.compiler == 'LLVM' }}"
+              uses: "egor-tensin/setup-clang@v1"
+            - name: "Set up MinGW"
+              if: "${{ matrix.compiler == 'MinGW' }}"
+              uses: "egor-tensin/setup-mingw@v2"
+              with:
+                  platform: "x64"
+            - name: "Set up MSVC"
+              if: "${{ matrix.compiler == 'MSVC' }}"
+              uses: "seanmiddleditch/gha-setup-vsdevenv@master"
+            - name: "Build Project"
+              run: |
+                  New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
+
+                  $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
+                  $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
+                  $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
+
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
+
+                  if ("${{ matrix.compiler }}" -eq "LLVM") {
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path libs\lua51.lib)"
+                  } elseif (("${{ matrix.compiler }}" -eq "MinGW") -or ("${{ matrix.compiler }}" -eq "MSVC")) {
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path LuaJIT\bin\lua51.dll)"
+                  }
+
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
+            # - name: "Set up MinGW"
+            #   uses: "egor-tensin/setup-mingw@v2"
+            #   with:
+            #       platform: "x64"
+            # - name: "Install busted"
+            #   run: |
+            #       $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
+            #       $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
+            #       $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
+
+            #       LuaRocks/luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install busted

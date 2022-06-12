@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 set(FALLBACK_VERSION 0.0.1)
 set(TOML++ toml++)
 set(SOL2 sol2)
+set(MAGIC_ENUM magic_enum)
 
 if(NOT TOML_LUA_VERSION)
     find_package(Git)
@@ -51,6 +52,14 @@ FetchContent_Declare(
 	GIT_TAG "v3.2.3"
 )
 
+FetchContent_Declare(
+	${MAGIC_ENUM}
+	GIT_REPOSITORY "https://github.com/Neargye/magic_enum.git"
+	GIT_SHALLOW ON
+    GIT_SUBMODULES ""
+	GIT_TAG "v0.8.0"
+)
+
 FetchContent_GetProperties(${TOML++})
 if(NOT ${TOML++}_POPULATED)
     message(STATUS "Cloning ${TOML++}")
@@ -65,8 +74,11 @@ if(NOT ${SOL2}_POPULATED)
     FetchContent_MakeAvailable(${SOL2})
 endif()
 
-if(WIN32)
-    set(SOL2_BUILD_LUA TRUE)
+FetchContent_GetProperties(${MAGIC_ENUM})
+if(NOT ${MAGIC_ENUM}_POPULATED)
+    message(STATUS "Cloning ${MAGIC_ENUM}")
+	FetchContent_Populate(${MAGIC_ENUM})
+    FetchContent_MakeAvailable(${MAGIC_ENUM})
 endif()
 
 if(UNIX)
@@ -86,7 +98,7 @@ if(UNIX)
 else(UNIX)
     if(WIN32)
         set(PLAT "win32")
-        add_definitions(-DLUA_BUILD_AS_DLL -DLUA_LIB -D_CRT_SECURE_NO_WARNINGS)
+        add_compile_definitions(LUA_BUILD_AS_DLL LUA_LIB _CRT_SECURE_NO_WARNINGS)
     else(WIN32)
         set(PLAT "unsupported")
     endif(WIN32)
@@ -95,12 +107,10 @@ endif(UNIX)
 
 if(NOT LUA_INCLUDE_DIR OR (WIN32 AND NOT LUA_LIBRARIES))
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
-    find_package(Lua REQUIRED)
+    find_package(Lua)
 endif()
 
-add_subdirectory(${${SOL2}_SOURCE_DIR})
-
-include_directories(${LUA_INCLUDE_DIR} src src/include ${${TOML++}_SOURCE_DIR} ${${SOL2}_SOURCE_DIR}/include)
+include_directories(${LUA_INCLUDE_DIR} src src/include ${${TOML++}_SOURCE_DIR} ${${SOL2}_SOURCE_DIR}/include ${${MAGIC_ENUM}_SOURCE_DIR}/include)
 
 set(SOURCES
     src/toml.cpp
@@ -113,7 +123,7 @@ set(SOURCES
 add_library(toml.lua MODULE ${SOURCES})
 source_group(src FILES ${SOURCES})
 
-target_link_libraries(toml.lua sol2 ${LUA_LIBRARIES})
+target_link_libraries(toml.lua ${LUA_LIBRARIES})
 
 if (LINK_FLAGS)
     set_target_properties(toml.lua PROPERTIES

@@ -25,6 +25,7 @@ build = {
 	variables = {
 		CMAKE_INSTALL_PREFIX = "$(PREFIX)",
 		LUA_INCLUDE_DIR = "$(LUA_INCDIR)",
+		LINK_FLAGS = "$(LINK_FLAGS)",
 		TOML_LUA_VERSION = v,
 	},
 }
