@@ -18,8 +18,14 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Table of Contents](#table-of-contents)
     -   [Installation](#installation)
         -   [Requirements](#requirements)
+        -   [Install LuaJIT on Windows](#install-luajit-on-windows)
         -   [LuaRocks](#luarocks)
+            -   [MacOS and Linux](#macos-and-linux)
         -   [Manual Compilation](#manual-compilation)
+            -   [MacOS and Linux](#macos-and-linux-1)
+            -   [Windows](#windows)
+                -   [Build with MinGW](#build-with-mingw)
+                -   [Build with LLVM](#build-with-llvm)
     -   [Usage](#usage)
         -   [Decoding](#decoding)
         -   [Encoding](#encoding)
@@ -32,7 +38,7 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Thu Dec  2 22:19:10 EST 2021 -->
+<!-- Added by: lebje, at: Sun Jun 12 16:12:23 EDT 2022 -->
 
 <!--te-->
 
