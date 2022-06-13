@@ -3,9 +3,7 @@
 **TOML v1.0.0 parser and serializer for Lua. Powered by [toml++](https://github.com/marzer/tomlplusplus/).**
 
 [![Build and Test on MacOS](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-MacOS.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-MacOS.yml)
-
 [![Build and Test on Linux](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml)
-
 [![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
 
 toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize [TOML](https://toml.io) files in Lua.
