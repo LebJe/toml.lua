@@ -7,7 +7,7 @@ jobs:
         runs-on: "windows-latest"
         strategy:
             matrix:
-                compiler: ["LLVM", "MSVC"]
+                compiler: ["LLVM", "MinGW"]
         steps:
             - uses: "actions/checkout@v3"
             - name: "Install Dependencies"
