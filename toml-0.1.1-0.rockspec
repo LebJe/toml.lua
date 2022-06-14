@@ -1,5 +1,5 @@
 package = "toml"
-version = "0.1.0-0"
+version = "0.1.1-0"
 
 local v = version:gsub("%-%d", "")
 
@@ -26,6 +26,7 @@ build = {
 		CMAKE_INSTALL_PREFIX = "$(PREFIX)",
 		LUA_INCLUDE_DIR = "$(LUA_INCDIR)",
 		LINK_FLAGS = "$(LINK_FLAGS)",
+		LUA_LIBRARIES = "$(LUA_LIBRARIES)",
 		TOML_LUA_VERSION = v,
 	},
 }

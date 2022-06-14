@@ -6,6 +6,8 @@
 [![Build and Test on Linux](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml)
 [![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
 
+[![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
+
 toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize [TOML](https://toml.io) files in Lua.
 
 ## Table of Contents
@@ -74,6 +76,26 @@ to build and install LuaJIT.
 luarocks install toml
 ```
 
+#### Windows
+
+##### LLVM
+
+If you have installed Clang, and CMake is configured to use it, you can run:
+
+```powershell
+luarocks install toml
+```
+
+##### MinGW
+
+If you have installed MinGW, and CMake is configured to use it, you can run:
+
+```powershell
+luarocks config variables.LINK_FLAGS "path\to\LuaJIT\bin\lua51.dll"
+luarocks install toml
+luarocks config variables.LINK_FLAGS --unset
+```
+
 ### Manual Compilation
 
 #### MacOS and Linux
@@ -111,7 +133,7 @@ You'll find the `toml.dll` file in the `build` directory.
 Install [LLVM](https://llvm.org) and [Ninja](https://ninja-build.org/) (`choco install llvm ninja`), then:
 
 ```powershell
-cmake.exe -S . -B build -G "Ninja Multi-Config" -DLUA_INCLUDE_DIR="path\to\LuaJIT\include" -DLINK_FLAGS="path\to\toml.lua\libs\lua51.lib"
+cmake.exe -S . -B build -G "Ninja Multi-Config" -DLUA_INCLUDE_DIR="path\to\LuaJIT\include"
 
 cmake.exe --build build --config Release
 ```

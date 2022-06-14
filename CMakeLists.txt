@@ -99,6 +99,9 @@ else(UNIX)
     if(WIN32)
         set(PLAT "win32")
         add_compile_definitions(LUA_BUILD_AS_DLL LUA_LIB _CRT_SECURE_NO_WARNINGS)
+        if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+        add_compile_definitions(MAGIC_ENUM_NO_CHECK_SUPPORT)
+        endif()
     else(WIN32)
         set(PLAT "unsupported")
     endif(WIN32)
@@ -114,16 +117,20 @@ include_directories(${LUA_INCLUDE_DIR} src src/include ${${TOML++}_SOURCE_DIR} $
 
 set(SOURCES
     src/toml.cpp
-	src/decoding/decoding.cpp
-	src/encoding/encoding.cpp
-	src/DateAndTime/dateAndTime.cpp
-	src/utilities/utilities.cpp
+    src/decoding/decoding.cpp
+    src/encoding/encoding.cpp
+    src/DateAndTime/dateAndTime.cpp
+    src/utilities/utilities.cpp
 )
 
 add_library(toml.lua MODULE ${SOURCES})
 source_group(src FILES ${SOURCES})
 
-target_link_libraries(toml.lua ${LUA_LIBRARIES})
+if(WIN32 AND "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+	target_link_options(toml.lua PUBLIC ${PROJECT_SOURCE_DIR}\\libs\\lua51.lib)
+else() 
+    target_link_libraries(toml.lua ${LUA_LIBRARIES})    
+endif()
 
 if (LINK_FLAGS)
     set_target_properties(toml.lua PROPERTIES
