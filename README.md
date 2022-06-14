@@ -3,8 +3,8 @@
 **TOML v1.0.0 parser and serializer for Lua. Powered by [toml++](https://github.com/marzer/tomlplusplus/).**
 
 [![Build and Test on MacOS](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-MacOS.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-MacOS.yml)
-
 [![Build and Test on Linux](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml)
+[![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
 
 [![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
 
@@ -18,8 +18,14 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Table of Contents](#table-of-contents)
     -   [Installation](#installation)
         -   [Requirements](#requirements)
+        -   [Install LuaJIT on Windows](#install-luajit-on-windows)
         -   [LuaRocks](#luarocks)
+            -   [MacOS and Linux](#macos-and-linux)
         -   [Manual Compilation](#manual-compilation)
+            -   [MacOS and Linux](#macos-and-linux-1)
+            -   [Windows](#windows)
+                -   [Build with MinGW](#build-with-mingw)
+                -   [Build with LLVM](#build-with-llvm)
     -   [Usage](#usage)
         -   [Decoding](#decoding)
         -   [Encoding](#encoding)
@@ -32,7 +38,7 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Thu Dec  2 22:19:10 EST 2021 -->
+<!-- Added by: lebje, at: Sun Jun 12 16:12:23 EDT 2022 -->
 
 <!--te-->
 
