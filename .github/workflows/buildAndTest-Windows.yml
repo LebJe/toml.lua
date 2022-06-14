@@ -46,6 +46,9 @@ jobs:
             - name: "Run Example"
               run: |
                 $env:LUA_CPATH="$(Resolve-Path LuaRocks\tree\lib\lua\5.1\)?.dll"
+                $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua"
+                LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install inspect
+                
                 LuaJIT\bin\luajit.exe examples\example.lua
             # - name: "Set up MinGW"
             #   uses: "egor-tensin/setup-mingw@v2"
