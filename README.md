@@ -332,13 +332,13 @@ Passing an empty table removes all options, while not providing a table will use
 	--- Allow non-ASCII characters in strings (as opposed to their escaped form, e.g. `\u00DA`).
 	allow_unicode_strings = true,
 
-	--- Allow integers with #value_flags::format_as_binary to be emitted as binary.
+	--- Allow integers with `formatAsBinary` to be emitted as binary. (Not implemented yet)
 	allowBinaryIntegers = true,
 
-	--- Allow integers with #value_flags::format_as_octal to be emitted as octal.
+	--- Allow integers with `formatAsOctal` to be emitted as octal. (Not implemented yet)
 	allowOctalIntegers = true,
 
-	--- Allow integers with #value_flags::format_as_hexadecimal to be emitted as hexadecimal.
+	--- Allow integers with `formatAsHexadecimal` to be emitted as hexadecimal. (Not implemented yet)
 	allowHexadecimalIntegers = true,
 
 	--- Apply indentation to tables nested within other tables/arrays.
