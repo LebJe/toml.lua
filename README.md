@@ -6,8 +6,6 @@
 [![Build and Test on Linux](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml)
 [![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
 
-[![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
-
 toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize [TOML](https://toml.io) files in Lua.
 
 ## Table of Contents
@@ -367,7 +365,7 @@ Passing an empty table removes all options, while not providing a table will use
 
 ## Licenses
 
-The [toml++](https://github.com/marzer/tomlplusplus/) license is available at [https://github.com/marzer/tomlplusplus/blob/maater/LICENSE](https://github.com/marzer/tomlplusplus/blob/maater/LICENSE).
+The [toml++](https://github.com/marzer/tomlplusplus/) license is available at [https://github.com/marzer/tomlplusplus/blob/master/LICENSE](https://github.com/marzer/tomlplusplus/blob/maater/LICENSE).
 
 The [sol2](https://github.com/ThePhD/sol2) license is available at [https://github.com/ThePhD/sol2/blob/develop/LICENSE.txt](https://github.com/ThePhD/sol2/blob/develop/LICENSE.txt).
 
