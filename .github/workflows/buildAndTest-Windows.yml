@@ -45,6 +45,7 @@ jobs:
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make    
             - name: "Run Example"
               run: |
+                mkdir LuaRocks\tree\share\lua\5.1\
                 $env:LUA_CPATH="$(Resolve-Path LuaRocks\tree\lib\lua\5.1\)?.dll"
                 $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua"
                 LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install inspect
