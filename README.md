@@ -365,7 +365,7 @@ Passing an empty table removes all options, while not providing a table will use
 
 ## Licenses
 
-The [toml++](https://github.com/marzer/tomlplusplus/) license is available at [https://github.com/marzer/tomlplusplus/blob/master/LICENSE](https://github.com/marzer/tomlplusplus/blob/maater/LICENSE).
+The [toml++](https://github.com/marzer/tomlplusplus/) license is available at [https://github.com/marzer/tomlplusplus/blob/master/LICENSE](https://github.com/marzer/tomlplusplus/blob/master/LICENSE).
 
 The [sol2](https://github.com/ThePhD/sol2) license is available at [https://github.com/ThePhD/sol2/blob/develop/LICENSE.txt](https://github.com/ThePhD/sol2/blob/develop/LICENSE.txt).
 
