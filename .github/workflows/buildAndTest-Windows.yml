@@ -7,7 +7,7 @@ jobs:
         runs-on: "windows-latest"
         strategy:
             matrix:
-                compiler: ["LLVM"]
+                compiler: ["LLVM", "MSVC"]
         steps:
             - uses: "actions/checkout@v3"
             - name: "Install Dependencies"
@@ -37,14 +37,16 @@ jobs:
 
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
 
-                  if ("${{ matrix.compiler }}" -eq "LLVM") {
-                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path libs\lua51.lib)"
-                  } elseif (("${{ matrix.compiler }}" -eq "MinGW") -or ("${{ matrix.compiler }}" -eq "MSVC")) {
+                  if (("${{ matrix.compiler }}" -eq "MinGW") -or ("${{ matrix.compiler }}" -eq "MSVC")) {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path LuaJIT\bin\lua51.dll)"
                   }
 
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make    
+            - name: "Run Example"
+              run: |
+                $env:LUA_CPATH="$(Resolve-Path LuaRocks\tree\lib\lua\5.1\)?.dll"
+                LuaJIT\bin\luajit.exe examples\example.lua
             # - name: "Set up MinGW"
             #   uses: "egor-tensin/setup-mingw@v2"
             #   with:
