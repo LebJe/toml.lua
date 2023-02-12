@@ -1,6 +1,7 @@
 #include "magic_enum.hpp"
 #include "toml.hpp"
 #include <DataTypes/TOMLInt/TOMLInt.hpp>
+#include <bitset>
 
 std::ostream & operator<<(std::ostream & os, const TOMLInt & tomlInt) {
 	switch (tomlInt.tomlInt.flags()) {
