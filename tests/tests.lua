@@ -1,7 +1,6 @@
 lu = require("luaunit")
 local toml = require("toml")
 local data = require("tests/tables")
-local inspect = require("inspect")
 
 TestEncoder = {}
 TestDecoder = {}
