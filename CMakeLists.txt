@@ -31,7 +31,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # compile in release mode by default
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
+	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()
 
 include(FetchContent)
@@ -41,7 +41,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/marzer/tomlplusplus.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v3.0.1"
+	GIT_TAG "v3.3.0"
 )
 
 FetchContent_Declare(
@@ -49,7 +49,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/ThePhD/sol2.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v3.2.3"
+	GIT_TAG "v3.3.0"
 )
 
 FetchContent_Declare(
@@ -57,7 +57,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/Neargye/magic_enum.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v0.8.0"
+	GIT_TAG "v0.8.2"
 )
 
 FetchContent_GetProperties(${TOML++})
@@ -119,7 +119,8 @@ set(SOURCES
     src/toml.cpp
     src/decoding/decoding.cpp
     src/encoding/encoding.cpp
-    src/DateAndTime/dateAndTime.cpp
+	src/DataTypes/DateAndTime/dateAndTime.cpp
+	src/DataTypes/TOMLInt/TOMLInt.cpp
     src/utilities/utilities.cpp
 )
 

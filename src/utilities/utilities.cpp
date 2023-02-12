@@ -1,4 +1,5 @@
 #include "utilities.hpp"
+#include "Options.hpp"
 #include "toml.hpp"
 #include <iostream>
 #include <magic_enum.hpp>
@@ -7,20 +8,20 @@
 
 using toml::format_flags;
 
-static std::map<format_flags, bool> defaultFlags = std::map<toml::format_flags, bool> {
-	{ format_flags::quote_dates_and_times, true },
-	{ format_flags::quote_infinities_and_nans, false },
-	{ format_flags::allow_literal_strings, false },
-	{ format_flags::allow_multi_line_strings, false },
-	{ format_flags::allow_real_tabs_in_strings, false },
-	{ format_flags::allow_unicode_strings, true },
-	{ format_flags::allow_binary_integers, true },
-	{ format_flags::allow_hexadecimal_integers, true },
-	{ format_flags::allow_octal_integers, true },
-	{ format_flags::indent_sub_tables, false },
-	{ format_flags::indentation, true },
-	{ format_flags::relaxed_float_precision, false },
-};
+static std::map<format_flags, bool> defaultFlags =
+	std::map<toml::format_flags, bool> { { format_flags::quote_dates_and_times, false },
+										 { format_flags::quote_infinities_and_nans, false },
+										 { format_flags::allow_literal_strings, false },
+										 { format_flags::allow_multi_line_strings, false },
+										 { format_flags::allow_real_tabs_in_strings, false },
+										 { format_flags::allow_unicode_strings, true },
+										 { format_flags::allow_binary_integers, true },
+										 { format_flags::allow_hexadecimal_integers, true },
+										 { format_flags::allow_octal_integers, true },
+										 { format_flags::indent_sub_tables, false },
+										 { format_flags::indentation, true },
+										 { format_flags::relaxed_float_precision, false },
+										 { format_flags::terse_key_value_pairs, false } };
 
 // Based on https://codereview.stackexchange.com/a/263761
 std::string camelCase(std::string s) noexcept {
@@ -63,17 +64,24 @@ std::string parseErrorToString(toml::parse_error e) {
 		   ")";
 }
 
+inline void sourcePositionToTable(sol::table & table, toml::source_position s) {
+	table["line"] = s.line;
+	table["column"] = s.column;
+};
+
 void parseErrorToTable(toml::parse_error e, sol::table & table) {
 	auto source = e.source();
 
 	auto beginTable = sol::table(table.lua_state(), sol::create);
 	auto endTable = sol::table(table.lua_state(), sol::create);
 
-	table["reason"] = std::string(e.what());
+	// sourcePositionToTable(beginTable, source.begin);
+	// sourcePositionToTable(endTable, source.end);
 	beginTable["line"] = source.begin.line;
 	beginTable["column"] = source.begin.column;
 	endTable["line"] = source.end.line;
 	endTable["column"] = source.end.column;
+	table["reason"] = std::string(e.what());
 	table["begin"] = beginTable;
 	table["end"] = endTable;
 }
@@ -113,13 +121,27 @@ toml::format_flags tableToFormatFlags(sol::optional<sol::table> t) {
 	// User passed an empty table to clear all flags.
 	if (table.empty()) return flags;
 
-	for (auto flag : magic_enum::enum_values<format_flags>()) {
+	constexpr auto f = magic_enum::enum_values<format_flags>();
+	for (auto flag : f) {
 		addFlag(flags, table, flag);
 	}
 
 	// `format_flags::indentation` is not returned from `enum_values`.
 	addFlag(flags, table, format_flags::indentation);
 	return flags;
+}
+
+Options tableToOptions(sol::optional<sol::table> t) {
+	if (!t) return Options();
+
+	auto table = t.value();
+	auto options = Options();
+	options.formattedIntAsUserData =
+		table["formattedIntAsUserData"].get_or(Options().formattedIntAsUserData);
+	options.temporalTypesAsUserData =
+		table["temporalTypesAsUserData"].get_or(Options().temporalTypesAsUserData);
+
+	return options;
 }
 
 std::optional<std::string> keyToString(sol::object key) {
@@ -163,7 +185,7 @@ std::string solLuaDataTypeToString(sol::type type, bool withPrefix) {
 	}
 }
 
-std::variant<int, toml::table> getTableFromStringInState(sol::state_view state) {
+std::variant<int, toml::table *> getTableFromStringInState(sol::state_view state) {
 	try {
 		sol::stack::check<std::string>(
 			state.lua_state(), 1,
@@ -176,7 +198,7 @@ std::variant<int, toml::table> getTableFromStringInState(sol::state_view state) 
 
 		std::string document = sol::stack::get<std::string>(state.lua_state(), 1);
 
-		auto res = toml::parse(document);
+		auto res = new toml::table(toml::parse(document));
 
 		return res;
 

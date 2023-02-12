@@ -1,15 +1,19 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
+#include <Options.hpp>
 #include <cstddef>
 #include <optional>
 #include <sol/sol.hpp>
 #include <string>
 #include <toml.hpp>
 
-// Based on https://codereview.stackexchange.com/a/263761
+/// Converts a string into [Camel Case](https://en.wikipedia.org/wiki/Camel_case).
+///
+/// The code in this function is based on https://en.wikipedia.org/wiki/Camel_case
 std::string camelCase(std::string s) noexcept;
 
+/// Version of `camelCase` that accepts a `string_view`.
 std::string camelCase(std::string_view s) noexcept;
 
 /// Converts `toml::source_position` into a formatted `std::string`.
@@ -30,10 +34,13 @@ std::string parseErrorToString(toml::parse_error e);
 /// Inserts the values in `e` into `table`.
 void parseErrorToTable(toml::parse_error e, sol::table & table);
 
+/// Takes a Lua table, with keys representing flag names, and values
 toml::format_flags tableToFormatFlags(sol::optional<sol::table> t);
 
+Options tableToOptions(sol::optional<sol::table> t);
+
 /// `std::string` description of `sol::type`.
-std::string solLuaDataTypeToString(sol::type type, bool withPrefix = true);
+std::string solLuaDataTypeToString(sol::type type, bool withPrefix = false);
 
 std::optional<std::string> keyToString(sol::object key);
 
@@ -44,9 +51,9 @@ std::optional<std::string> keyToString(sol::object key);
 /// returned.
 ///
 /// If a string is not on the stack, then an integer from `luaL_argerror` is returned.
-std::variant<int, toml::table> getTableFromStringInState(sol::state_view state);
+std::variant<int, toml::table *> getTableFromStringInState(sol::state_view state);
 
-/// @brief Gets a TOML string from the Lua stack, converts it to a `toml::table`, then converts that
+///  Gets a TOML string from the Lua stack, converts it to a `toml::table`, then converts that
 /// table to another format using `T`. The string returned by `T` is then returned.
 ///
 /// @param T: `T` should conform to `toml::impl::formatter`.
@@ -55,10 +62,10 @@ template <class T> inline int tomlTo(sol::state_view state, toml::format_flags f
 	auto res = getTableFromStringInState(state);
 
 	try {
-		auto table = std::get<toml::table>(res);
+		auto table = std::get<toml::table *>(res);
 		std::stringstream ss;
 
-		ss << T(table, flags);
+		ss << T(*table, flags);
 		return sol::stack::push(L, ss.str());
 	} catch (std::bad_variant_access) { return std::get<int>(res); }
 }

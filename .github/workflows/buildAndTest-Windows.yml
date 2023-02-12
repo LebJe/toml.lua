@@ -43,25 +43,14 @@ jobs:
 
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
-            - name: "Run Example"
+            - name: "Run Tests"
               run: |
                   mkdir LuaRocks\tree\share\lua\5.1\
                   $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
                   $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
                   $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
                   $env:LUA_CPATH="$(Resolve-Path LuaRocks\tree\lib\lua\5.1\)?.dll"
-                  $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua"
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install inspect
+                  $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua;$($pwd.Path)\?.lua"
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install luaunit
 
-                  LuaJIT\bin\luajit.exe examples\example.lua
-            # - name: "Set up MinGW"
-            #   uses: "egor-tensin/setup-mingw@v2"
-            #   with:
-            #       platform: "x64"
-            # - name: "Install busted"
-            #   run: |
-            #       $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
-            #       $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
-            #       $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
-
-            #       LuaRocks/luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install busted
+                  LuaJIT\bin\luajit.exe tests\tests.lua

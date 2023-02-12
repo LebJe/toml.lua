@@ -2,27 +2,30 @@
 local record toml
 	--- Decodes a TOML document into a Lua table. If `tomlStr` is invalid, an error message that describes the error in the document is returned.
 	--- @param tomlStr string: The string containing a TOML document.
+	--- @param options DecodingOptions|nil: See docs for DecodingOptions.
 	--- @return table: The decoded TOML document.
-	decode: function(tomlStr: string): { string: any }
+	decode: function(tomlStr: string, options: DecodingOptions): { string: any }
 
 	--- Encodes a Lua table into a TOML document.
 	--- @param data table: The Lua table to be encoded.
-	--- @param options FormattingOptions: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
+	--- @param options FormattingOptions|nil: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The encoded TOML document.
-	encode: function(data: { string: any }, options: FormattingOptions): string
+	encode: function(data: { string: any }, options: FormattingOptions|nil): string
 	
 	--- Converts a TOML document into a JSON document.
 	--- @param tomlStr string: The string containing a TOML document.
-	--- @param options FormattingOptions: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
+	--- @param options FormattingOptions|nil: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The converted JSON document.
-	tomlToJSON: function(tomlStr: string, options: FormattingOptions): string
+	tomlToJSON: function(tomlStr: string, options: FormattingOptions|nil): string
 	
 	--- Converts a TOML document into a YAML document.
 	--- @param tomlStr string: The string containing a TOML document.
-	--- @param options FormattingOptions: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
+	--- @param options FormattingOptions|nil: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The converted YAML document.
-	tomlToYAML: function(tomlStr: string, options: FormattingOptions): string
+	tomlToYAML: function(tomlStr: string, options: FormattingOptions|nil): string
 	
+	formatting: Formatting
+
 	record Date
 		userdata
 		year: number
@@ -30,6 +33,8 @@ local record toml
 		day: number
 		
 		new: function(year: number, month: number, day: number): Date
+
+		metamethod __tostring: function(Date): string
 	end
 	
 	record Time
@@ -45,6 +50,8 @@ local record toml
 			second: number,
 			nanoSecond: number
 		): Time
+
+		metamethod __tostring: function(Time): string
 	end
 	
 	record TimeOffset
@@ -52,6 +59,8 @@ local record toml
 		minutes: number
 		
 		new: function (hours: number, minutes: number): TimeOffset
+
+		metamethod __tostring: function(TimeOffset): string
 	end
 	
 	record DateTime
@@ -62,6 +71,13 @@ local record toml
 		
 		new: function(date: Date, time: Time): DateTime
 		new: function(date: Date, time: Time, timeOffset: TimeOffset): DateTime
+
+		metamethod __tostring: function(DateTime): string
+	end
+
+	record DecodingOptions
+		--formattedIntAsUserData: boolean
+		temporalTypesAsUserData: boolean
 	end
 	
 	record FormattingOptions
@@ -96,7 +112,16 @@ local record toml
 		indentArrayElements: boolean
 
 		--- Combination of `indentSubTables` and `indentArrayElements`.
-		indentation: boolean
+		indentation: boolean,
+		
+		--- Emit floating-point values with relaxed (human-friendly) precision.
+		--- Warning: Setting this flag may cause serialized documents to no longer round-
+		--- trip correctly since floats might have a less precise value upon being written out
+		--- than they did when being read in. Use this flag at your own risk.
+		relaxedFloatPrecision: boolean,
+	
+	--- Avoids the use of whitespace around key-value pairs.
+	terseKeyValuePairs: boolean
 	end
 end
 

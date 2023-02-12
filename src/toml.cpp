@@ -1,4 +1,5 @@
-#include <DateAndTime/dateAndTime.hpp>
+#include <DataTypes/DateAndTime/dateAndTime.hpp>
+#include <DataTypes/TOMLInt/TOMLInt.hpp>
 #include <cstddef>
 #include <decoding/decoding.hpp>
 #include <encoding/encoding.hpp>
@@ -19,15 +20,20 @@ extern "C" {
 		sol::table table;
 
 		sol::stack::check<sol::table>(
-			L, 1, [](lua_State * s, int, sol::type, sol::type, const char * = nullptr) {
+			L, 1, [](lua_State * s, int, sol::type, sol::type type, const char * = nullptr) {
 				return luaL_argerror(
-					s, 1, "A Lua table with strings as keys should be the first and only argument");
+					s, 1,
+					std::string(
+						std::string(
+							"A Lua table with strings as keys should be the first argument, not ") +
+						solLuaDataTypeToString(type))
+						.c_str());
 			});
 		table = sol::stack::get<sol::table>(L, 1);
 
 		auto flags = tableToFormatFlags(sol::stack::check_get<sol::table>(L, 2));
 
-		toml::table tomlTable;
+		toml::table * tomlTable;
 
 		try {
 			tomlTable = tomlTableFromLuaTable(table);
@@ -38,11 +44,9 @@ extern "C" {
 
 		std::stringstream ss;
 
-		ss << toml::toml_formatter(tomlTable, flags);
+		ss << toml::toml_formatter(*tomlTable, flags);
 
 		return sol::stack::push(L, ss.str());
-
-		return 1;
 	}
 
 	int decode(lua_State * L) {
@@ -51,11 +55,12 @@ extern "C" {
 
 		try {
 			try {
-				auto tomlTable = std::get<toml::table>(res);
+				auto tomlTable = std::get<toml::table *>(res);
 
 				auto luaTable = state.create_table();
 
-				tomlToLuaTable(tomlTable, luaTable);
+				auto options = tableToOptions(sol::stack::check_get<sol::table>(L, 2));
+				tomlToLuaTable(tomlTable, luaTable, options);
 
 				return luaTable.push();
 			} catch (std::bad_variant_access) { return std::get<int>(res); }
@@ -90,6 +95,22 @@ extern "C" {
 		module["decode"] = &decode;
 		module["tomlToJSON"] = &tomlToJSON;
 		module["tomlToYAML"] = &tomlToYAML;
+
+		// Setup formatting flags
+
+		// auto formattingTable = module.create_named("formatting");
+
+		// formattingTable.new_enum<toml::value_flags>(
+		// 	"int", { { "binary", toml::value_flags::format_as_binary },
+		// 				   { "hexadecimal", toml::value_flags::format_as_hexadecimal },
+		// 				   { "octal", toml::value_flags::format_as_octal } });
+
+		// // Setup UserType = Int
+
+		// sol::usertype<TOMLInt> tomlInt = module.new_usertype<TOMLInt>(
+		// 	"Int", sol::constructors<TOMLInt(int64_t), TOMLInt(int64_t, uint16_t)>());
+
+		// tomlInt["int"] = sol::property(&TOMLInt::getInt, &TOMLInt::setInt);
 
 		// Setup UserType - Date
 

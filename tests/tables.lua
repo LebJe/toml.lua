@@ -1,83 +1,43 @@
 local toml = require("toml")
 local M = {}
 
-M.tableForTestToml = {
-	author = "Mark Gillard",
-	autolinks = {
-		["(?:toml::)?default[_ ]formatters?"] = "classtoml_1_1default__formatter.html",
-		["(?:toml::)?json[_ ]formatters?"] = "classtoml_1_1json__formatter.html",
-		["(?:toml::)?node[_ ]views?"] = "classtoml_1_1node__view.html",
-		["(?:toml::)?parse[_ ]errors?"] = "classtoml_1_1parse__error.html",
-		["(?:toml::)?parse[_ ]results?"] = "classtoml_1_1parse__result.html",
-		["(?:toml::)?source[_ ]positions?"] = "structtoml_1_1source__position.html",
-		["(?:toml::)?source[_ ]regions?"] = "structtoml_1_1source__region.html",
+M.tableForFormattingTest = {
+	asUserdata = {
+		dob = toml.DateTime.new(toml.Date.new(1979, 05, 27), toml.Time.new(7, 32, 0, 0), toml.TimeOffset.new(-8, 0)),
 	},
-	badges = {
-		["1. C++20"] = { "badge-C++20.svg", "https://en.cppreference.com/w/cpp/compiler_support" },
-		["2. TOML v1.0.0"] = { "badge-TOML.svg", "https://toml.io/en/v1.0.0" },
-		["3. CircleCI"] = {
-			"https://img.shields.io/circleci/build/github/marzer/tomlplusplus?label=circle%20ci&logo=circleci&logoColor=white&style=flat-square",
-			"https://circleci.com/gh/marzer/tomlplusplus",
+	asTables = {
+		dob = {
+			date = {
+				day = 27,
+				month = 5,
+				year = 1979,
+			},
+			time = {
+				hour = 7,
+				minute = 32,
+				nanoSecond = 0,
+				second = 0,
+			},
+			timeOffset = {
+				minutes = -480,
+			},
 		},
-		["4. Mentioned in Awesome C++"] = { "badge-awesome.svg", "https://github.com/fffaraz/awesome-cpp" },
-	},
-	code_blocks = {
-		macros = { "TOML_[A-Z0-9_]+?", "print_value" },
-		string_literals = { "_toml" },
-	},
-	cpp = 17,
-	description = "TOML for C++",
-	extra_files = {
-		"images/banner_small.png",
-		"images/badge-awesome.svg",
-		"images/badge-TOML.svg",
-		"images/badge-C++20.svg",
-	},
-	favicon = "images/favicon.ico",
-	github = "marzer/tomlplusplus",
-	images = {
-		paths = { "images" },
-	},
-	license = { "MIT", "https://github.com/marzer/tomlplusplus/blob/master/LICENSE" },
-	logo = "images/logo.png",
-	macros = {
-		["TOML_ABI_NAMESPACE_BOOL(...)"] = "static_assert(true)",
-		["TOML_ABI_NAMESPACE_START(...)"] = "static_assert(true)",
-		["TOML_ASYMMETRICAL_EQUALITY_OPS(...)"] = "static_assert(true)",
-	},
-	meta_tags = {
-		["google-site-verification"] = "gbtcNgKlNiPSMKkYMw4zWFVWGPH_oU93m9n_-nb4qK8",
-	},
-	name = "toml++",
-	navbar = { "namespaces", "annotated" },
-	show_includes = 0,
-	sources = {
-		paths = { "pages" },
-		patterns = { "*.h", "*.dox" },
-		recursive_paths = { "../include" },
-		strip_paths = { "../include" },
-	},
-	theme = "dark",
-	warnings = {
-		enabled = 1,
-		treat_as_errors = 0,
-		undocumented = 1,
 	},
 }
 
-M.tableForTest2Toml = {
+M.tableForTestConfigToml = {
 	database = {
 		data = { { "delta", "phi" }, { 3.14 } },
-		enabled = 1,
+		enabled = true,
 		ports = { 8000, 8001, 8002 },
 		temp_targets = {
-			case = 72.0,
+			case = 72,
 			cpu = 79.5,
 		},
 	},
 	owner = {
-		name = "Tom Preston-Werner",
 		dob = toml.DateTime.new(toml.Date.new(1979, 05, 27), toml.Time.new(7, 32, 0, 0), toml.TimeOffset.new(-8, 0)),
+		name = "Tom Preston-Werner",
 	},
 	servers = {
 		alpha = {
@@ -90,11 +50,90 @@ M.tableForTest2Toml = {
 		},
 	},
 	title = "TOML Example",
+	-- formattedIntegers = {
+	-- 	octalInt = toml.Int.new(2582, toml.formatAsOctal),
+	-- 	binaryInt = toml.Int.new(3483, toml.formatAsBinary),
+	-- 	hexadecimalInt = toml.Int.new(5791, toml.formatAsHexadecimal)
+	-- }
+}
+
+M.tableForTestConfig2Toml = {
+	author = "Mark Gillard",
+	autolinks = {
+		["(?:toml::)?date[_-]times?"] = "structtoml_1_1date__time.html",
+		["(?:toml::)?default[_ ]formatters?"] = "classtoml_1_1default__formatter.html",
+		["(?:toml::)?json[_ ]formatters?"] = "classtoml_1_1json__formatter.html",
+		["(?:toml::)?node[_ ]views?"] = "classtoml_1_1node__view.html",
+		["(?:toml::)?parse[_ ]errors?"] = "classtoml_1_1parse__error.html",
+		["(?:toml::)?parse[_ ]results?"] = "classtoml_1_1parse__result.html",
+		["(?:toml::)?path[_ ]components?"] = "classtoml_1_1path__component.html",
+		["(?:toml::)?source[_ ]positions?"] = "structtoml_1_1source__position.html",
+		["(?:toml::)?source[_ ]regions?"] = "structtoml_1_1source__region.html",
+		["(?:toml::)?time[_ ]offsets?"] = "structtoml_1_1time__offset.html",
+		["(?:toml::)?toml[_ ]formatters?"] = "classtoml_1_1toml__formatter.html",
+		["(?:toml::)?yaml[_ ]formatters?"] = "classtoml_1_1yaml__formatter.html",
+		["toml::dates?"] = "structtoml_1_1date.html",
+		["toml::keys?"] = "classtoml_1_1key.html",
+		["toml::times?"] = "structtoml_1_1time.html",
+		["toml::values?"] = "classtoml_1_1value.html",
+	},
+	badges = {
+		["1. TOML v1.0.0"] = { "badge-TOML.svg", "https://toml.io/en/v1.0.0" },
+		["2. CI"] = {
+			"https://github.com/marzer/tomlplusplus/actions/workflows/ci.yaml/badge.svg?branch=master",
+			"https://github.com/marzer/tomlplusplus/actions/workflows/ci.yaml",
+		},
+		["3. Mentioned in Awesome C++"] = { "badge-awesome.svg", "https://github.com/fffaraz/awesome-cpp" },
+		["4. Sponsor"] = { "badge-sponsor.svg", "https://github.com/sponsors/marzer" },
+		["5. Gitter"] = { "badge-gitter.svg", "https://gitter.im/marzer/tomlplusplus" },
+	},
+	changelog = true,
+	code_blocks = {
+		macros = { "TOML_[A-Z0-9_]+?", "print_value" },
+	},
+	cpp = 17,
+	description = "TOML for C++",
+	extra_files = {
+		"images/badge-awesome.svg",
+		"images/badge-TOML.svg",
+		"images/badge-gitter.svg",
+		"images/badge-sponsor.svg",
+	},
+	favicon = "images/favicon.ico",
+	github = "marzer/tomlplusplus",
+	images = {
+		paths = { "images" },
+	},
+	license = { "MIT", "https://github.com/marzer/tomlplusplus/blob/master/LICENSE" },
+	logo = "images/logo.svg",
+	macros = {
+		["TOML_ABI_NAMESPACE_BOOL(...)"] = "static_assert(true)",
+		["TOML_ABI_NAMESPACE_START(...)"] = "static_assert(true)",
+		["TOML_ASYMMETRICAL_EQUALITY_OPS(...)"] = "static_assert(true)",
+	},
+	meta_tags = {
+		["google-site-verification"] = "gbtcNgKlNiPSMKkYMw4zWFVWGPH_oU93m9n_-nb4qK8",
+	},
+	name = "toml++",
+	navbar = { "namespaces", "annotated" },
+	show_includes = false,
+	sources = {
+		paths = { "pages" },
+		patterns = { "*.h", "*.dox" },
+		recursive_paths = { "../include" },
+		strip_paths = { "../include" },
+	},
+	theme = "dark",
+	warnings = {
+		enabled = true,
+		treat_as_errors = false,
+		undocumented = true,
+	},
 }
 
 M.tableForMassiveToml = {
 	key = {
-		["end"] = 1,
+		["end"] = true,
 		key1 = "abcdefg",
 		key10 = "abcdefg",
 		key100 = "abcdefg",

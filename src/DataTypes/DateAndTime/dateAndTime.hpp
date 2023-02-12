@@ -1,8 +1,10 @@
 #ifndef DATE_AND_TIME_H
 #define DATE_AND_TIME_H
 
+#include <Options.hpp>
 #include <cstddef>
 #include <optional>
+#include <sol/sol.hpp>
 #include <toml.hpp>
 
 /// Wrapper for `toml::date`.
@@ -19,6 +21,12 @@ struct TOMLDate {
 	void setYear(uint16_t year) { date.year = year; };
 	void setMonth(uint8_t month) { date.month = month; };
 	void setDay(uint8_t day) { date.day = day; };
+
+	void toTable(sol::table & table) {
+		table["day"] = date.day;
+		table["month"] = date.month;
+		table["year"] = date.year;
+	}
 
 	bool operator==(const TOMLDate & right) const { return date == right.date; }
 
@@ -47,6 +55,13 @@ struct TOMLTime {
 	void setSecond(uint8_t second) { time.second = second; };
 	void setNanoSecond(uint32_t nanoSecond) { time.nanosecond = nanoSecond; };
 
+	void toTable(sol::table & table) {
+		table["hour"] = time.hour;
+		table["minute"] = time.minute;
+		table["second"] = time.second;
+		table["nanoSecond"] = time.nanosecond;
+	}
+
 	bool operator==(const TOMLTime & right) const { return time == right.time; }
 
 	bool operator<(const TOMLTime & right) const { return time < right.time; }
@@ -65,6 +80,8 @@ struct TOMLTimeOffset {
 	};
 
 	int16_t minutes() const { return timeOffset.minutes; };
+
+	void toTable(sol::table & table) { table["minutes"] = timeOffset.minutes; }
 
 	bool operator==(const TOMLTimeOffset & right) const { return timeOffset == right.timeOffset; }
 
@@ -99,6 +116,23 @@ struct TOMLDateTime {
 
 		return dt;
 	};
+
+	void toTable(sol::table & table) {
+		auto dateTable = table.create();
+		date.toTable(dateTable);
+
+		auto timeTable = table.create();
+		time.toTable(timeTable);
+
+		table["date"] = dateTable;
+		table["time"] = timeTable;
+
+		if (timeOffset) {
+			auto timeOffsetTable = table.create();
+			timeOffset->toTable(timeOffsetTable);
+			table["timeOffset"] = timeOffsetTable;
+		}
+	}
 
 	bool operator==(const TOMLDateTime & right) const { return asDateTime() == right.asDateTime(); }
 
