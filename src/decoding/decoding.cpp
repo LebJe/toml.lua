@@ -1,8 +1,12 @@
 #include "decoding.hpp"
+#include <DataTypes/TOMLInt/TOMLInt.hpp>
+#include <magic_enum.hpp>
+#include <sol/sol.hpp>
+#include <toml.hpp>
 
 void insertNodeInTable(
-	sol::table & luaTable, std::variant<std::string, size_t> keyOrIndex, void * value) {
-	auto node = reinterpret_cast<toml::node *>(value);
+	sol::table & luaTable, std::variant<std::string, size_t> keyOrIndex, toml::node * node,
+	Options options) {
 
 	switch (node->type()) {
 		case toml::node_type::string: {
@@ -14,11 +18,20 @@ void insertNodeInTable(
 		}
 
 		case toml::node_type::integer: {
-			auto v = int64_t { *node->as_integer() };
-
+			auto v = *node->as_integer();
 			try {
-				luaTable[std::get<std::string>(keyOrIndex)] = v;
-			} catch (std::bad_variant_access) { luaTable[std::get<size_t>(keyOrIndex)] = v; }
+				if (options.formattedIntAsUserData && v.flags() != toml::value_flags::none) {
+					luaTable[std::get<std::string>(keyOrIndex)] = TOMLInt(v, v.flags());
+				} else {
+					luaTable[std::get<std::string>(keyOrIndex)] = v.get();
+				}
+			} catch (std::bad_variant_access) {
+				if (options.formattedIntAsUserData && v.flags() != toml::value_flags::none) {
+					luaTable[std::get<size_t>(keyOrIndex)] = TOMLInt(v, v.flags());
+				} else {
+					luaTable[std::get<size_t>(keyOrIndex)] = v.get();
+				}
+			}
 
 			break;
 		}
@@ -34,7 +47,7 @@ void insertNodeInTable(
 		}
 
 		case toml::node_type::boolean: {
-			auto v = *node->as_boolean() ? 1 : 0;
+			auto v = node->as_boolean()->get();
 
 			try {
 				luaTable[std::get<std::string>(keyOrIndex)] = v;
@@ -45,7 +58,7 @@ void insertNodeInTable(
 		case toml::node_type::array: {
 			auto newLTable = sol::table(luaTable.lua_state(), sol::create);
 
-			tomlArrayToLuaArray(*node->as_array(), newLTable);
+			tomlArrayToLuaArray(*node->as_array(), newLTable, options);
 
 			newLTable.push();
 
@@ -60,7 +73,7 @@ void insertNodeInTable(
 		case toml::node_type::table: {
 			auto newLTable = sol::table(luaTable.lua_state(), sol::create);
 
-			tomlToLuaTable(*node->as_table(), newLTable);
+			tomlToLuaTable(node->as_table(), newLTable, options);
 
 			newLTable.push();
 
@@ -76,8 +89,22 @@ void insertNodeInTable(
 			auto v = TOMLDate(*(*node->as_date()));
 
 			try {
-				luaTable[std::get<std::string>(keyOrIndex)] = v;
-			} catch (std::bad_variant_access) { luaTable[std::get<size_t>(keyOrIndex)] = v; }
+				if (options.temporalTypesAsUserData) {
+					luaTable[std::get<std::string>(keyOrIndex)] = v;
+				} else {
+					auto t = luaTable.create();
+					v.toTable(t);
+					luaTable[std::get<std::string>(keyOrIndex)] = t;
+				}
+			} catch (std::bad_variant_access) {
+				if (options.temporalTypesAsUserData) {
+					luaTable[std::get<size_t>(keyOrIndex)] = v;
+				} else {
+					auto t = luaTable.create();
+					v.toTable(t);
+					luaTable[std::get<size_t>(keyOrIndex)] = t;
+				}
+			}
 
 			break;
 		}
@@ -85,8 +112,22 @@ void insertNodeInTable(
 			auto v = TOMLTime(*(*node->as_time()));
 
 			try {
-				luaTable[std::get<std::string>(keyOrIndex)] = v;
-			} catch (std::bad_variant_access) { luaTable[std::get<size_t>(keyOrIndex)] = v; }
+				if (options.temporalTypesAsUserData) {
+					luaTable[std::get<std::string>(keyOrIndex)] = v;
+				} else {
+					auto t = luaTable.create();
+					v.toTable(t);
+					luaTable[std::get<std::string>(keyOrIndex)] = t;
+				}
+			} catch (std::bad_variant_access) {
+				if (options.temporalTypesAsUserData) {
+					luaTable[std::get<size_t>(keyOrIndex)] = v;
+				} else {
+					auto t = luaTable.create();
+					v.toTable(t);
+					luaTable[std::get<size_t>(keyOrIndex)] = t;
+				}
+			}
 
 			break;
 		}
@@ -98,9 +139,22 @@ void insertNodeInTable(
 			if (v.offset.has_value()) { dt.setTimeOffset(TOMLTimeOffset(v.offset.value())); }
 
 			try {
-				luaTable[std::get<std::string>(keyOrIndex)] = dt;
-			} catch (std::bad_variant_access) { luaTable[std::get<size_t>(keyOrIndex)] = dt; }
-
+				if (options.temporalTypesAsUserData) {
+					luaTable[std::get<std::string>(keyOrIndex)] = dt;
+				} else {
+					auto t = luaTable.create();
+					dt.toTable(t);
+					luaTable[std::get<std::string>(keyOrIndex)] = t;
+				}
+			} catch (std::bad_variant_access) {
+				if (options.temporalTypesAsUserData) {
+					luaTable[std::get<size_t>(keyOrIndex)] = dt;
+				} else {
+					auto t = luaTable.create();
+					dt.toTable(t);
+					luaTable[std::get<size_t>(keyOrIndex)] = t;
+				}
+			}
 			break;
 		}
 
@@ -109,20 +163,26 @@ void insertNodeInTable(
 	}
 }
 
-void tomlArrayToLuaArray(toml::array & tomlArray, sol::table & luaTable) {
+void tomlArrayToLuaArray(toml::array & tomlArray, sol::table & luaTable, Options options) {
 	size_t size = tomlArray.size();
 
 	for (size_t i = 0; i < size; i++) {
 		auto element = tomlArray.get(i);
 		size_t index = i + 1;
-		insertNodeInTable(luaTable, index, reinterpret_cast<void *>(element));
+		insertNodeInTable(luaTable, index, element, options);
 	};
 }
 
 /// Convert `luaTable` into a `toml::table`.
-void tomlToLuaTable(toml::table & table, sol::table & lTable) {
-	for (auto && [key, value] : table) {
+void tomlToLuaTable(toml::table * table, sol::table & lTable, Options options) {
+	if (table->is_inline()) {
+		auto metatable = lTable.create();
+		metatable["inline"] = true;
+		lTable[sol::metatable_key] = metatable;
+	};
+
+	for (auto && [key, value] : *table) {
 		auto k = std::string(key);
-		insertNodeInTable(lTable, k, reinterpret_cast<void *>(&value));
+		insertNodeInTable(lTable, k, &value, options);
 	}
 }

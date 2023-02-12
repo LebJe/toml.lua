@@ -34,12 +34,16 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
         -   [TOML Conversion](#toml-conversion)
             -   [JSON](#json)
             -   [YAML](#yaml)
+        -   [Inline Tables](#inline-tables)
         -   [Output Formatting](#output-formatting)
+            -   [Formatting Integers](#formatting-integers)
+            -   [Formatting TOML, JSON, YAML](#formatting-toml-json-yaml)
+        -   [Date and Time](#date-and-time)
     -   [Dependencies](#dependencies)
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Tue Jun 14 15:09:12 EDT 2022 -->
+<!-- Added by: lebje, at: Tue Oct 25 21:11:14 EDT 2022 -->
 
 <!--te-->
 
@@ -187,16 +191,85 @@ end
 --]]
 ```
 
+#### Decoding Options
+
+##### `temporalTypesAsUserData`
+
+-   `temporalTypesAsUserData = true`: The userdata types `toml.Date`, `toml.Time`, and `toml.DateTime` are used to represent TOML date and time types.
+
+-   `temporalTypesAsUserData = false`: Lua tables are used to represent TOML date and time types.
+
+```lua
+local tomlStr = [[
+date = 1979-05-27
+time = 07:32:00
+datetime = 1979-05-27T07:32:00-07:00
+]]
+
+local table1 = toml.decode(tomlStr, { temporalTypesAsUserData = true })
+local table2 = toml.decode(tomlStr, { temporalTypesAsUserData = false })
+
+print(inspect(table1))
+--[[
+{
+	date = <userdata 1> -- 1979-05-27, <-- toml.Date
+	time = <userdata 2> -- 07:32:00, <-- toml.Time
+	datetime = <userdata 3> -- 1979-05-27T07:32:00-07:00 <-- toml.DateTime
+}
+--]]
+
+print(inspect(table2))
+--[[
+{
+  date = {
+    day = 27,
+    month = 5,
+    year = 1979
+  },
+  datetime = {
+    date = {
+      day = 27,
+      month = 5,
+      year = 1979
+    },
+    time = {
+      hour = 7,
+      minute = 32,
+      nanoSecond = 0,
+      second = 0
+    },
+    timeOffset = {
+      minutes = -420
+    }
+  },
+  time = {
+    hour = 7,
+    minute = 32,
+    nanoSecond = 0,
+    second = 0
+  }
+}
+--]]
+```
+
 ### Encoding
 
 ```lua
 local toml = require("toml")
 
-local table = {
+-- Inline tables: https://toml.io/en/v1.0.0#inline-table
+local inlineTable = {
 	a = 1275892,
 	b = "Hello, World!",
 	c = true,
 	d = 124.2548,
+}
+
+-- Make the table inline.
+setmetatable(inlineTable, { inline = true })
+
+local table = {
+
 	e = {
 		f = { 1, 2, 3, "4", 5.142 },
 		g = toml.Date.new(1979,   05,     27),
@@ -212,7 +285,8 @@ local table = {
 			toml.TimeOffset.new(  -7,     0)
 			--                   hour   minute
 		)
-	}
+	},
+	inlineTable = inlineTable
 }
 
 local tomlDocument = toml.encode(table)
@@ -220,16 +294,13 @@ local tomlDocument = toml.encode(table)
 print(tomlDocument)
 
 --[[
-a = 1275892
-b = 'Hello, World!'
-c = true
-d = 124.2548
+inlineTable = { a = 1275892, b = "Hello, World!", c = true, d = 124.2548 }
 
 [e]
-f = [ 1, 2, 3, '4', 5.142 ]
-g = 1979-05-27
-h = 07:32:00
-i = 1979-05-27T07:32:00-07:00
+f = [ 1, 2, 3, "4", 5.1420000000000003 ]
+g = "1979-05-27"
+h = "07:32:00"
+i = "1979-05-27T07:32:00-07:00"
 --]]
 ```
 
@@ -310,7 +381,47 @@ local yaml = toml.tomlToYAML(tomlStr)
 print(yaml)
 ```
 
+### Inline Tables
+
+Use `setmetatable(myTable, { inline = true })` to create an [inline table](https://toml.io/en/v1.0.0#inline-table).
+
 ### Output Formatting
+
+<!---
+Uncomment once toml.Int works.
+
+#### Formatting Integers
+```lua
+local toml = require("toml")
+
+local normalIntegers = {
+	int1 = 2582
+	int2 = 3483
+	int3 = 5971
+}
+print(toml.encode(normalIntegers))
+--[[
+int1 = 2582
+int2 = 3483
+int3 = 5791
+--]]
+
+local formattedIntegers = {
+	int1 = toml.Int.new(2582, toml.formatting.int.octal),
+	int2 = toml.Int.new(3483, toml.formatting.int.binary),
+	int3 = toml.Int.new(5791, toml.formatting.int.hexadecimal)
+}
+
+print(toml.encode(formattedIntegers))
+--[[
+int1 = 0o5026
+int2 = 0b110110011011
+int3 = 0x169F
+--]]
+```
+-->
+
+#### Formatting TOML, JSON, YAML
 
 `toml.encode`, `toml.tomlToJSON`, and `toml.tomlToYAML` all take an optional second parameter: a table containing keys that disable or enable different formatting options.
 Passing an empty table removes all options, while not providing a table will use the default options.
@@ -335,13 +446,13 @@ Passing an empty table removes all options, while not providing a table will use
 	--- Allow non-ASCII characters in strings (as opposed to their escaped form, e.g. `\u00DA`).
 	allow_unicode_strings = true,
 
-	--- Allow integers with `formatAsBinary` to be emitted as binary. (Not implemented yet)
+	--- Allow integers with `toml.formatting.int.binary` to be emitted as binary. (Not implemented yet)
 	allowBinaryIntegers = true,
 
-	--- Allow integers with `formatAsOctal` to be emitted as octal. (Not implemented yet)
+	--- Allow integers with `toml.formatting.int.octal` to be emitted as octal. (Not implemented yet)
 	allowOctalIntegers = true,
 
-	--- Allow integers with `formatAsHexadecimal` to be emitted as hexadecimal. (Not implemented yet)
+	--- Allow integers with `toml.formatting.int.hexadecimal` to be emitted as hexadecimal. (Not implemented yet)
 	allowHexadecimalIntegers = true,
 
 	--- Apply indentation to tables nested within other tables/arrays.
@@ -354,8 +465,58 @@ Passing an empty table removes all options, while not providing a table will use
 	indentation = true,
 
 	--- Emit floating-point values with relaxed (human-friendly) precision.
-	relaxedFloatPrecision = false
+	---
+	--- Warning: Setting this flag may cause serialized documents to no longer round-
+	--- trip correctly since floats might have a less precise value upon being written out
+	--- than they did when being read in. Use this flag at your own risk.
+	relaxedFloatPrecision = false,
+
+	--- Avoids the use of whitespace around key-value pairs.
+	terseKeyValuePairs = false
 }
+```
+
+### Date and Time
+
+(Creating Date, Time, and DateTime is shown in [the encoding section](#encoding))
+
+```lua
+	record Date
+		year: number
+		month: number
+		day: number
+
+		new: function(year: number, month: number, day: number): Date
+	end
+
+	record Time
+		hour: number
+		minute: number
+		second: number
+		nanoSecond: number
+
+		new: function (
+			hour: number,
+			minute: number,
+			second: number,
+			nanoSecond: number
+		): Time
+	end
+
+	record TimeOffset
+		minutes: number
+
+		new: function (hours: number, minutes: number): TimeOffset
+	end
+
+	record DateTime
+		date: Date
+		time: Time
+		TimeOffset: nil | TimeOffset
+
+		new: function(date: Date, time: Time): DateTime
+		new: function(date: Date, time: Time, timeOffset: TimeOffset): DateTime
+	end
 ```
 
 > The comments for the options are from [the tomlplusplus documentation](https://marzer.github.io/tomlplusplus/namespacetoml.html#a2102aa80bc57783d96180f36e1f64f6a)

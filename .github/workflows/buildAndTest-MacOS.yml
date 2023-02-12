@@ -13,8 +13,8 @@ jobs:
             - name: "Install Dependencies"
               run: |
                   brew install ${{ matrix.lua }} luarocks
-                  luarocks install busted
+                  luarocks install luaunit
             - name: "Build Project"
               run: "luarocks make"
             - name: "Test Project"
-              run: "busted"
+              run: "lua tests/tests.lua"

@@ -6,6 +6,8 @@ compile_commands.json
 *.rock
 *.so
 *.dll
-
+.DS_Store
 Brewfile.lock.json
-.vscode
+.vscode/
+.nova/
+.vim/
