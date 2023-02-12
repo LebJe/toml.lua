@@ -69,7 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
--   Use luaunit instead of busted for testing
+-   Use [luaunit](https://github.com/bluebird75/luaunit) instead of [busted](https://github.com/lunarmodules/busted) for testing
+-   `quoteDatesAndTimes` now defaults to `false`.
 
 ### Fixed
 
