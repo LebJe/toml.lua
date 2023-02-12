@@ -16,7 +16,6 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Table of Contents](#table-of-contents)
     -   [Installation](#installation)
         -   [Requirements](#requirements)
-        -   [Install LuaJIT on Windows](#install-luajit-on-windows)
         -   [LuaRocks](#luarocks)
             -   [MacOS and Linux](#macos-and-linux)
             -   [Windows](#windows)
@@ -27,6 +26,7 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
             -   [Windows](#windows-1)
                 -   [Build with MinGW](#build-with-mingw)
                 -   [Build with LLVM](#build-with-llvm)
+                -   [Install LuaJIT](#install-luajit)
     -   [Usage](#usage)
         -   [Decoding](#decoding)
             -   [Decoding Options](#decoding-options)
@@ -44,7 +44,7 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Sun Feb 12 06:21:04 EST 2023 -->
+<!-- Added by: lebje, at: Sun Feb 12 09:15:16 EST 2023 -->
 
 <!--te-->
 
@@ -59,20 +59,6 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 -   Lua C headers (`lua.h`, `lualib.h`, and `lauxlib.h`)
 -   Lua library (e.g. `liblua51.<so|dylib|dll>`)
 -   Lua >= 5.1 or LuaJIT
-
-### Install LuaJIT on Windows
-
-If you don't have LuaJIT, or your installation does not have the Lua headers, you can:
-
-1. Install [MinGW](https://www.mingw-w64.org/) (`choco install mingw`)
-
-2. Run `scripts\buildLuaJIT.ps1`:
-
-```powershell
-powershell scripts\buildLuaJIT.ps1 -installDir "LuaJIT"
-```
-
-to build and install LuaJIT.
 
 ### LuaRocks
 
@@ -120,7 +106,7 @@ luarocks config variables.LINK_FLAGS --unset
 
 #### Windows
 
-If LuaJIT is not installed, or your installation does not have the Lua headers, Follow [this part of the README](#install-luajit-on-windows) to install LuaJIT.
+If LuaJIT is not installed, or your installation does not have the Lua headers, go to [install LuaJIT](#install-luajit).
 
 ##### Build with MinGW
 
@@ -145,6 +131,20 @@ cmake.exe --build build --config Release
 ```
 
 You'll find the `toml.dll` file in the `build` directory.
+
+##### Install LuaJIT
+
+If you don't have LuaJIT, or your installation does not have the Lua headers, you can:
+
+1. Install [MinGW](https://www.mingw-w64.org/) (`choco install mingw`)
+
+2. Run `scripts\buildLuaJIT.ps1`:
+
+```powershell
+powershell scripts\buildLuaJIT.ps1 -installDir "LuaJIT"
+```
+
+to build and install LuaJIT.
 
 ## Usage
 
@@ -299,9 +299,9 @@ inlineTable = { a = 1275892, b = "Hello, World!", c = true, d = 124.2548 }
 
 [e]
 f = [ 1, 2, 3, "4", 5.1420000000000003 ]
-g = "1979-05-27"
-h = "07:32:00"
-i = "1979-05-27T07:32:00-07:00"
+g = 1979-05-27
+h = 07:32:00
+i = 1979-05-27T07:32:00-07:00
 --]]
 ```
 
@@ -430,7 +430,7 @@ Passing an empty table removes all options, while not providing a table will use
 ```lua
 {
 	--- Dates and times will be emitted as quoted strings.
-	quoteDatesAndTimes = true,
+	quoteDatesAndTimes = false,
 
 	--- Infinities and NaNs will be emitted as quoted strings.
 	quoteInfinitesAndNaNs = false,

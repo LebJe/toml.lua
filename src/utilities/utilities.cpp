@@ -9,7 +9,7 @@
 using toml::format_flags;
 
 static std::map<format_flags, bool> defaultFlags =
-	std::map<toml::format_flags, bool> { { format_flags::quote_dates_and_times, true },
+	std::map<toml::format_flags, bool> { { format_flags::quote_dates_and_times, false },
 										 { format_flags::quote_infinities_and_nans, false },
 										 { format_flags::allow_literal_strings, false },
 										 { format_flags::allow_multi_line_strings, false },

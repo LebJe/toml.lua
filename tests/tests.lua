@@ -18,7 +18,7 @@ end
 function TestEncoder:testEncodeSamples()
 	local testConfig = read("tests/test-data/testConfig.toml")
 	local testConfig2 = read("tests/test-data/testConfig2.toml")
-	lu.assertEquals(toml.encode(data.tableForTestConfigToml, { quoteDatesAndTimes = false }), testConfig)
+	lu.assertEquals(toml.encode(data.tableForTestConfigToml), testConfig)
 	lu.assertEquals(toml.encode(data.tableForTestConfig2Toml), testConfig2)
 end
 
@@ -76,10 +76,8 @@ function TestDecoder:testInvalidInputs()
 end
 
 function TestDecoder:testFormatting()
-	local asTables = toml.decode(
-		toml.encode(data.tableForFormattingTest.asUserdata, { quoteDatesAndTimes = false }),
-		{ temporalTypesAsUserData = false }
-	)
+	local asTables =
+		toml.decode(toml.encode(data.tableForFormattingTest.asUserdata), { temporalTypesAsUserData = false })
 	lu.assertEquals(asTables, data.tableForFormattingTest.asTables)
 end
 
