@@ -50,7 +50,7 @@ jobs:
                   $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
                   $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
                   $env:LUA_CPATH="$(Resolve-Path LuaRocks\tree\lib\lua\5.1\)?.dll"
-                  $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua;$($pwd.Path)\?\?.lua"
+                  $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua;$($pwd.Path)\?"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install luaunit
 
                   LuaJIT\bin\luajit.exe tests\tests.lua
