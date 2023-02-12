@@ -29,6 +29,8 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
                 -   [Build with LLVM](#build-with-llvm)
     -   [Usage](#usage)
         -   [Decoding](#decoding)
+            -   [Decoding Options](#decoding-options)
+                -   [temporalTypesAsUserData](#temporaltypesasuserdata)
         -   [Encoding](#encoding)
         -   [Error Handling](#error-handling)
         -   [TOML Conversion](#toml-conversion)
@@ -36,14 +38,13 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
             -   [YAML](#yaml)
         -   [Inline Tables](#inline-tables)
         -   [Output Formatting](#output-formatting)
-            -   [Formatting Integers](#formatting-integers)
             -   [Formatting TOML, JSON, YAML](#formatting-toml-json-yaml)
         -   [Date and Time](#date-and-time)
     -   [Dependencies](#dependencies)
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Tue Oct 25 21:11:14 EDT 2022 -->
+<!-- Added by: lebje, at: Sun Feb 12 06:21:04 EST 2023 -->
 
 <!--te-->
 
