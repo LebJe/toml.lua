@@ -33,4 +33,11 @@ jobs:
                   luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
                   sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
-              run: "lua tests/tests.lua"
+              run: |
+                  if ! command -v lua &> /dev/null
+                  then
+                      luajit tests/tests.lua
+                      exit
+                  else
+                      lua tests/tests.lua
+                  fi
