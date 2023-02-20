@@ -1,10 +1,16 @@
 --- Encodes, decodes, and converts TOML documents.
 local record toml
-	--- Decodes a TOML document into a Lua table. If `tomlStr` is invalid, an error message that describes the error in the document is returned.
+	--- Decodes a TOML document into a Lua table. If `tomlStr` is invalid, an error table that describes the error in the document is returned.
 	--- @param tomlStr string: The string containing a TOML document.
 	--- @param options DecodingOptions|nil: See docs for DecodingOptions.
 	--- @return table: The decoded TOML document.
-	decode: function(tomlStr: string, options: DecodingOptions): { string: any }
+	decode: function(tomlStr: string, options: DecodingOptions|nil): { string: any }
+	
+	--- Decodes a TOML document into a Lua table. If `tomlStr` is invalid, an error table that describes the error in the document is returned.
+	--- @param filePath string: The path to the TOML document.
+	--- @param options DecodingOptions|nil: See docs for DecodingOptions.
+	--- @return table: The decoded TOML document.
+	decodeFromFile: function(filePath: string, options: DecodingOptions|nil): { string: any }
 
 	--- Encodes a Lua table into a TOML document.
 	--- @param data table: The Lua table to be encoded.
@@ -12,19 +18,23 @@ local record toml
 	--- @return string: The encoded TOML document.
 	encode: function(data: { string: any }, options: FormattingOptions|nil): string
 	
-	--- Converts a TOML document into a JSON document.
-	--- @param tomlStr string: The string containing a TOML document.
+	--- Encodes a Lua table into a TOML document, and **appends** that document to a file.
+	--- @param data table: The Lua table to be encoded.
+	--- @param file string: The file to write the document to/
+	--- @param options FormattingOptions|nil: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
+	encodeToFile: function(data: { string: any }, fileOrOptions: string|EncodeToFileOptions, options: FormattingOptions|nil)
+	
+	--- Converts a table, or a TOML document into a JSON document.
+	--- @param toml string|{ string: any }: A string containing a TOML document, or a table.
 	--- @param options FormattingOptions|nil: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The converted JSON document.
-	tomlToJSON: function(tomlStr: string, options: FormattingOptions|nil): string
+	toJSON: function(toml: string|{ string: any }, options: FormattingOptions|nil): string
 	
-	--- Converts a TOML document into a YAML document.
-	--- @param tomlStr string: The string containing a TOML document.
+	--- Converts a table, or a TOML document into a YAML document.
+	--- @param toml string|{ string: any }: A string containing a TOML document, or a table.
 	--- @param options FormattingOptions|nil: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	--- @return string: The converted YAML document.
-	tomlToYAML: function(tomlStr: string, options: FormattingOptions|nil): string
-	
-	formatting: Formatting
+	toYAML: function(toml: string|{ string: any }, options: FormattingOptions|nil): string
 
 	record Date
 		userdata
@@ -76,8 +86,13 @@ local record toml
 	end
 
 	record DecodingOptions
-		--formattedIntAsUserData: boolean
+		--formattedIntsAsUserData: boolean
 		temporalTypesAsUserData: boolean
+	end
+	
+	record EncodeToFileOptions
+		file: string,
+		overwrite: boolean
 	end
 	
 	record FormattingOptions
@@ -120,8 +135,8 @@ local record toml
 		--- than they did when being read in. Use this flag at your own risk.
 		relaxedFloatPrecision: boolean,
 	
-	--- Avoids the use of whitespace around key-value pairs.
-	terseKeyValuePairs: boolean
+		--- Avoids the use of whitespace around key-value pairs.
+		terseKeyValuePairs: boolean
 	end
 end
 

@@ -6,7 +6,7 @@
 [![Build and Test on Linux](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml)
 [![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
 
-toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize [TOML](https://toml.io) files in Lua.
+toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.com/marzer/tomlplusplus/), allowing you to parse and serialize [TOML](https://toml.io) in Lua.
 
 ## Table of Contents
 
@@ -33,18 +33,18 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
                 -   [temporalTypesAsUserData](#temporaltypesasuserdata)
         -   [Encoding](#encoding)
         -   [Error Handling](#error-handling)
+        -   [Inline Tables](#inline-tables)
         -   [TOML Conversion](#toml-conversion)
             -   [JSON](#json)
             -   [YAML](#yaml)
-        -   [Inline Tables](#inline-tables)
         -   [Output Formatting](#output-formatting)
-            -   [Formatting TOML, JSON, YAML](#formatting-toml-json-yaml)
+            -   [Formatting TOML, JSON, or YAML](#formatting-toml-json-or-yaml)
         -   [Date and Time](#date-and-time)
     -   [Dependencies](#dependencies)
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Sun Feb 12 09:15:16 EST 2023 -->
+<!-- Added by: lebje, at: Sun Feb 19 22:27:48 EST 2023 -->
 
 <!--te-->
 
@@ -167,7 +167,11 @@ i = 1979-05-27T07:32:00-07:00
 local toml = require("toml")
 local inspect = require("inspect")
 
+-- Decode from string
 local succeeded, table = pcall(toml.decode, tomlStr)
+
+-- Decode from file
+succeeded, table = pcall(toml.decodeFromFile, "configuration.toml")
 
 if succeeded then
 -- Use `table`.
@@ -290,9 +294,22 @@ local table = {
 	inlineTable = inlineTable
 }
 
-local tomlDocument = toml.encode(table)
+-- Encode to string
+local succeeded, documentOrErrorMessage = pcall(toml.encode, table)
 
-print(tomlDocument)
+-- Encode to file, this will **append** to the file.
+succeeded, documentOrErrorMessage = pcall(toml.encodeToFile, table, "configuration.toml")
+
+-- Encode to file, this will **overwrite** the file.
+succeeded, documentOrErrorMessage = pcall(toml.encodeToFile, table, { file = "configuration.toml", overwrite = true })
+
+if succeeded then
+	-- Successfully encoded to string / wrote to file
+	print(tomlDocumentOrErrorMessage)
+else
+-- Error occurred
+	print(tomlDocumentOrErrorMessage)
+end
 
 --[[
 inlineTable = { a = 1275892, b = "Hello, World!", c = true, d = 124.2548 }
@@ -349,6 +366,10 @@ else
 end
 ```
 
+### Inline Tables
+
+Use `setmetatable(myTable, { inline = true })` to create an [inline table](https://toml.io/en/v1.0.0#inline-table).
+
 ### TOML Conversion
 
 ```lua
@@ -371,20 +392,22 @@ i = 1979-05-27T07:32:00-07:00
 #### JSON
 
 ```lua
-local json = toml.tomlToJSON(tomlStr)
+-- Convert from a string
+local json = toml.toJSON(tomlStr)
+
+-- or from a table
+json = toml.toJSON(toml.decode(tomlStr))
+
 print(json)
 ```
 
 #### YAML
 
 ```lua
-local yaml = toml.tomlToYAML(tomlStr)
+local yaml = toml.toYAML(tomlStr)
+yaml = toml.toYAML(toml.decode(tomlStr))
 print(yaml)
 ```
-
-### Inline Tables
-
-Use `setmetatable(myTable, { inline = true })` to create an [inline table](https://toml.io/en/v1.0.0#inline-table).
 
 ### Output Formatting
 
@@ -422,9 +445,9 @@ int3 = 0x169F
 ```
 -->
 
-#### Formatting TOML, JSON, YAML
+#### Formatting TOML, JSON, or YAML
 
-`toml.encode`, `toml.tomlToJSON`, and `toml.tomlToYAML` all take an optional second parameter: a table containing keys that disable or enable different formatting options.
+`toml.encode`, `toml.encodeToFile`, `toml.toJSON`, and `toml.toYAML` all take an optional second parameter: a table containing keys that disable or enable different formatting options.
 Passing an empty table removes all options, while not providing a table will use the default options.
 
 ```lua

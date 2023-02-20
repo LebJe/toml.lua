@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0](https://github.com/LebJe/toml.lua/releases/tag/0.2.0) - 2023-02-19
+
+### Added
+
+-   `toml.decodeFromFile(filePath: string)`:
+    -   Decodes a TOML document at `filePath`. Throws the same errors as `toml.decode`.
+-   `toml.encodeToFile(data: table, fileOrOptions: string|table)`:
+    -   Encodes `data` to the file specified in `fileOrOptions`. the file will be created if it doesn't exist.
+        -   When `fileOrOptions` is a string, it simply is the file path.
+        -   When `fileOrOptions` is a table, it should have`file`, and optionally, `overwrite` as keys. `file` is the file path, and `overwrite` should be `true` when `file` should be `overwritten` with `data`, and `false` when `data` should be appended to `file`.
+-   Added tests that cover:
+    -   The property accessors of `toml.Date`, `toml.Time`, `toml.DateTime`, and `toml.TimeOffset`.
+    -   `toml.toJSON` and `toml.toYAML`.
+
+### Changed
+
+-   `toml.tomlToJSON` and `toml.tomlToYAML` have been renamed to `toml.toJSON` and `toml.toYAML`.
+    -   They have been renamed because they now have two functions: converting a TOML string to JSON/YAML (as before), or converting a table into JSON/YAML.
+    -   The first parameter can be a string containing TOML (as before), or a table.
+
 ## [0.2.0](https://github.com/LebJe/toml.lua/releases/tag/0.2.0) - 2023-02-12
 
 ### Added

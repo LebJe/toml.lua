@@ -1,6 +1,5 @@
 #include "decoding.hpp"
 #include <DataTypes/TOMLInt/TOMLInt.hpp>
-#include <magic_enum.hpp>
 #include <sol/sol.hpp>
 #include <toml.hpp>
 
@@ -20,13 +19,13 @@ void insertNodeInTable(
 		case toml::node_type::integer: {
 			auto v = *node->as_integer();
 			try {
-				if (options.formattedIntAsUserData && v.flags() != toml::value_flags::none) {
+				if (options.formattedIntsAsUserData && v.flags() != toml::value_flags::none) {
 					luaTable[std::get<std::string>(keyOrIndex)] = TOMLInt(v, v.flags());
 				} else {
 					luaTable[std::get<std::string>(keyOrIndex)] = v.get();
 				}
 			} catch (std::bad_variant_access) {
-				if (options.formattedIntAsUserData && v.flags() != toml::value_flags::none) {
+				if (options.formattedIntsAsUserData && v.flags() != toml::value_flags::none) {
 					luaTable[std::get<size_t>(keyOrIndex)] = TOMLInt(v, v.flags());
 				} else {
 					luaTable[std::get<size_t>(keyOrIndex)] = v.get();

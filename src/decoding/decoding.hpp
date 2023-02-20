@@ -5,7 +5,6 @@
 #include <Options.hpp>
 #include <cstddef>
 #include <sol/sol.hpp>
-#include <string>
 #include <toml.hpp>
 
 /// Convert `luaTable` into a `toml::table`.
