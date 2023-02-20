@@ -81,10 +81,10 @@ local function testFormatters(fileType, formatter)
 	local path = "tests/test-data/testConfig"
 	local filePath = path .. "." .. fileType
 	local tomlPath = path .. ".toml"
-	
+
 	local file = read(filePath)
 	local tomlTable = toml.decodeFromFile(tomlPath)
-	
+
 	lu.assertEquals(formatter(tomlTable), file)
 	lu.assertEquals(formatter(read(tomlPath)), file)
 end
@@ -100,16 +100,16 @@ end
 function TestUserdataAccessors:testTemporalTypesAccessors()
 	local dateTime = data.tableForFormattingTest.asUserdata.dob
 	local dateTimeTable = data.tableForFormattingTest.asTables.dob
-	
+
 	-- time offset
 	lu.assertEquals(dateTime.timeOffset.minutes, dateTimeTable.timeOffset.minutes)
-	
+
 	-- time
 	lu.assertEquals(dateTime.time.hour, dateTimeTable.time.hour)
 	lu.assertEquals(dateTime.time.minute, dateTimeTable.time.minute)
 	lu.assertEquals(dateTime.time.second, dateTimeTable.time.second)
 	lu.assertEquals(dateTime.time.nanoSecond, dateTimeTable.time.nanoSecond)
-	
+
 	-- date
 	lu.assertEquals(dateTime.date.day, dateTimeTable.date.day)
 	lu.assertEquals(dateTime.date.month, dateTimeTable.date.month)

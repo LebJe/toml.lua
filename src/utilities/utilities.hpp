@@ -1,9 +1,9 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
-#include <magic_enum.hpp>
 #include <Options.hpp>
 #include <cstddef>
+#include <magic_enum.hpp>
 #include <optional>
 #include <sol/sol.hpp>
 #include <string>

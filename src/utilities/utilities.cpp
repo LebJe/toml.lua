@@ -201,7 +201,8 @@ std::string solLuaDataTypeToString(sol::type type, bool withPrefix) {
 			return "poly";
 		case sol::type::string:
 			return std::string(withPrefix ? "a " : "") + "string";
-		default: return "none";
+		default:
+			return "none";
 	}
 }
 
@@ -215,8 +216,7 @@ std::variant<int, toml::table *> getTableFromStringInState(sol::state_view state
 			return res;
 		} else {
 			return luaL_argerror(
-					L, index,
-					"A string containing a TOML document should be the first argument");
+				L, index, "A string containing a TOML document should be the first argument");
 		}
 	} catch (toml::parse_error & e) {
 		auto table = state.create_table();
