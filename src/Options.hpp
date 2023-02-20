@@ -2,7 +2,7 @@
 #define OPTIONS_H
 
 struct Options {
-	bool formattedIntAsUserData = false;
+	bool formattedIntsAsUserData = false;
 	bool temporalTypesAsUserData = true;
 };
 #endif /* OPTIONS_H */

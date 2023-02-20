@@ -1,4 +1,3 @@
-#include "magic_enum.hpp"
 #include "toml.hpp"
 #include <DataTypes/TOMLInt/TOMLInt.hpp>
 #include <bitset>

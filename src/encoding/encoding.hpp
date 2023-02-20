@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <sol/sol.hpp>
-#include <string>
 #include <toml.hpp>
 #include <utilities/utilities.hpp>
 

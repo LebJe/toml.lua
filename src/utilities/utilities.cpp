@@ -75,12 +75,8 @@ void parseErrorToTable(toml::parse_error e, sol::table & table) {
 	auto beginTable = sol::table(table.lua_state(), sol::create);
 	auto endTable = sol::table(table.lua_state(), sol::create);
 
-	// sourcePositionToTable(beginTable, source.begin);
-	// sourcePositionToTable(endTable, source.end);
-	beginTable["line"] = source.begin.line;
-	beginTable["column"] = source.begin.column;
-	endTable["line"] = source.end.line;
-	endTable["column"] = source.end.column;
+	sourcePositionToTable(beginTable, source.begin);
+	sourcePositionToTable(endTable, source.end);
 	table["reason"] = std::string(e.what());
 	table["begin"] = beginTable;
 	table["end"] = endTable;
@@ -136,8 +132,8 @@ Options tableToOptions(sol::optional<sol::table> t) {
 
 	auto table = t.value();
 	auto options = Options();
-	options.formattedIntAsUserData =
-		table["formattedIntAsUserData"].get_or(Options().formattedIntAsUserData);
+	options.formattedIntsAsUserData =
+		table["formattedIntsAsUserData"].get_or(Options().formattedIntsAsUserData);
 	options.temporalTypesAsUserData =
 		table["temporalTypesAsUserData"].get_or(Options().temporalTypesAsUserData);
 
@@ -145,16 +141,39 @@ Options tableToOptions(sol::optional<sol::table> t) {
 }
 
 std::optional<std::string> keyToString(sol::object key) {
-	if (key.is<std::string>()) {
-		return key.as<std::string>();
-	} else if (key.is<int64_t>()) {
-		return std::to_string(key.as<int64_t>());
-	} else if (key.is<double>()) {
-		return std::to_string(key.as<double>());
-	} else if (key.is<bool>()) {
-		return std::string(key.as<bool>() ? "true" : "false");
+	switch (key.get_type()) {
+		case sol::type::string:
+			return key.as<std::string>();
+			break;
+		case sol::type::number:
+			return std::to_string(key.as<int64_t>());
+			break;
+		case sol::type::boolean:
+			return std::string(key.as<bool>() ? "true" : "false");
+			break;
+		case sol::type::none:
+		case sol::type::lua_nil:
+			return "<nil>";
+			break;
+		case sol::type::thread:
+			return "<thread>";
+			break;
+		case sol::type::function:
+			return "<function>";
+			break;
+		case sol::type::userdata:
+			return "<userdata>";
+			break;
+		case sol::type::lightuserdata:
+			return "<userdata>";
+			break;
+		case sol::type::table:
+			return "<table>";
+			break;
+		case sol::type::poly:
+			return "<poly>";
+			break;
 	}
-
 	return std::optional<std::string>();
 }
 
@@ -182,33 +201,26 @@ std::string solLuaDataTypeToString(sol::type type, bool withPrefix) {
 			return "poly";
 		case sol::type::string:
 			return std::string(withPrefix ? "a " : "") + "string";
+		default: return "none";
 	}
 }
 
-std::variant<int, toml::table *> getTableFromStringInState(sol::state_view state) {
+std::variant<int, toml::table *> getTableFromStringInState(sol::state_view state, int index) {
+	auto L = state.lua_state();
 	try {
-		sol::stack::check<std::string>(
-			state.lua_state(), 1,
-			[](lua_State * s, int, sol::type, sol::type, const char * = nullptr) {
-				return luaL_argerror(
-					s, 1,
-					"A string containing a TOML document should be the first and only "
-					"argument");
-			});
+		if (auto toml = sol::stack::get<std::optional<std::string>>(L, 1)) {
+			std::string document = sol::stack::get<std::string>(L, index);
 
-		std::string document = sol::stack::get<std::string>(state.lua_state(), 1);
-
-		auto res = new toml::table(toml::parse(document));
-
-		return res;
-
+			auto res = new toml::table(toml::parse(document));
+			return res;
+		} else {
+			return luaL_argerror(
+					L, index,
+					"A string containing a TOML document should be the first argument");
+		}
 	} catch (toml::parse_error & e) {
-		auto source = e.source();
-
 		auto table = state.create_table();
-
 		parseErrorToTable(e, table);
-
 		sol::stack::push(state.lua_state(), table);
 		return lua_error(state.lua_state());
 	} catch (std::exception & e) {

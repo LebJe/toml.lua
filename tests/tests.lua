@@ -4,6 +4,8 @@ local data = require("tests/tables")
 
 TestEncoder = {}
 TestDecoder = {}
+TestFormatters = {}
+TestUserdataAccessors = {}
 
 ---Reads the contents of `file` at `path`
 ---@param path string The path to the file
@@ -28,21 +30,15 @@ function TestEncoder:testEncodeMassiveTable()
 end
 
 function TestDecoder:testDecodeSamples()
-	local testConfig = read("tests/test-data/testConfig.toml")
-	local testConfig2 = read("tests/test-data/testConfig2.toml")
-
-	lu.assertEquals(data.tableForTestConfigToml, toml.decode(testConfig))
-	lu.assertEquals(data.tableForTestConfig2Toml, toml.decode(testConfig2))
+	lu.assertEquals(data.tableForTestConfigToml, toml.decodeFromFile("tests/test-data/testConfig.toml"))
+	lu.assertEquals(data.tableForTestConfig2Toml, toml.decodeFromFile("tests/test-data/testConfig2.toml"))
 end
 
 function TestDecoder:testDecodeMassiveTable()
-	local massive = read("tests/test-data/massive.toml")
-	lu.assertEquals(data.tableForMassiveToml, toml.decode(massive))
+	lu.assertEquals(data.tableForMassiveToml, toml.decodeFromFile("tests/test-data/massive.toml"))
 end
 
 function TestDecoder:testInvalidInputs()
-	local invalid1 = read("tests/test-data/invalidTable.toml")
-	local invalid2 = read("tests/test-data/multipleDotKeyInvalid.toml")
 	local expectedError1 = {
 		begin = {
 			line = 7,
@@ -66,8 +62,8 @@ function TestDecoder:testInvalidInputs()
 		reason = "Error while parsing key-value pair: cannot redefine existing integer as dotted key-value pair",
 	}
 
-	local succeeded1, table1 = pcall(toml.decode, invalid1)
-	local succeeded2, table2 = pcall(toml.decode, invalid2)
+	local succeeded1, table1 = pcall(toml.decodeFromFile, "tests/test-data/invalidTable.toml")
+	local succeeded2, table2 = pcall(toml.decodeFromFile, "tests/test-data/multipleDotKeyInvalid.toml")
 
 	lu.assertFalse(succeeded1)
 	lu.assertFalse(succeeded2)
@@ -75,10 +71,49 @@ function TestDecoder:testInvalidInputs()
 	lu.assertEquals(table2, expectedError2)
 end
 
-function TestDecoder:testFormatting()
+function TestDecoder:testFormattingOptions()
 	local asTables =
 		toml.decode(toml.encode(data.tableForFormattingTest.asUserdata), { temporalTypesAsUserData = false })
 	lu.assertEquals(asTables, data.tableForFormattingTest.asTables)
+end
+
+local function testFormatters(fileType, formatter)
+	local path = "tests/test-data/testConfig"
+	local filePath = path .. "." .. fileType
+	local tomlPath = path .. ".toml"
+	
+	local file = read(filePath)
+	local tomlTable = toml.decodeFromFile(tomlPath)
+	
+	lu.assertEquals(formatter(tomlTable), file)
+	lu.assertEquals(formatter(read(tomlPath)), file)
+end
+
+function TestFormatters:testJSONFormatter()
+	testFormatters("json", toml.toJSON)
+end
+
+function TestFormatters:testYAMLFormatter()
+	testFormatters("yml", toml.toYAML)
+end
+
+function TestUserdataAccessors:testTemporalTypesAccessors()
+	local dateTime = data.tableForFormattingTest.asUserdata.dob
+	local dateTimeTable = data.tableForFormattingTest.asTables.dob
+	
+	-- time offset
+	lu.assertEquals(dateTime.timeOffset.minutes, dateTimeTable.timeOffset.minutes)
+	
+	-- time
+	lu.assertEquals(dateTime.time.hour, dateTimeTable.time.hour)
+	lu.assertEquals(dateTime.time.minute, dateTimeTable.time.minute)
+	lu.assertEquals(dateTime.time.second, dateTimeTable.time.second)
+	lu.assertEquals(dateTime.time.nanoSecond, dateTimeTable.time.nanoSecond)
+	
+	-- date
+	lu.assertEquals(dateTime.date.day, dateTimeTable.date.day)
+	lu.assertEquals(dateTime.date.month, dateTimeTable.date.month)
+	lu.assertEquals(dateTime.date.year, dateTimeTable.date.year)
 end
 
 os.exit(lu.LuaUnit.run())
