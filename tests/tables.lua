@@ -2,24 +2,62 @@ local toml = require("toml")
 local M = {}
 
 M.tableForFormattingTest = {
-	asUserdata = {
-		dob = toml.DateTime.new(toml.Date.new(1979, 05, 27), toml.Time.new(7, 32, 0, 0), toml.TimeOffset.new(-8, 0)),
+	temporalTypes = {
+		asUserdata = {
+			dob = toml.DateTime.new(
+				toml.Date.new(1979, 05, 27),
+				toml.Time.new(7, 32, 0, 0),
+				toml.TimeOffset.new(-8, 0)
+			),
+		},
+		asTables = {
+			dob = {
+				date = {
+					day = 27,
+					month = 5,
+					year = 1979,
+				},
+				time = {
+					hour = 7,
+					minute = 32,
+					nanoSecond = 0,
+					second = 0,
+				},
+				timeOffset = {
+					minutes = -480,
+				},
+			},
+		},
 	},
-	asTables = {
-		dob = {
-			date = {
-				day = 27,
-				month = 5,
-				year = 1979,
+	integers = {
+		asUserdata = {
+			formattedIntegers = {
+				int1 = toml.Int.new(2582, toml.formatting.int.octal),
+				int2 = toml.Int.new(3483, toml.formatting.int.binary),
+				int3 = toml.Int.new(5791, toml.formatting.int.hexadecimal),
+				table = {
+					int1 = toml.Int.new(2582, toml.formatting.int.octal),
+					int2 = toml.Int.new(3483, toml.formatting.int.binary),
+					int3 = toml.Int.new(5791, toml.formatting.int.hexadecimal),
+				},
+				array = {
+					toml.Int.new(2582, toml.formatting.int.octal),
+					toml.Int.new(3483, toml.formatting.int.binary),
+					toml.Int.new(5791, toml.formatting.int.hexadecimal),
+				},
 			},
-			time = {
-				hour = 7,
-				minute = 32,
-				nanoSecond = 0,
-				second = 0,
-			},
-			timeOffset = {
-				minutes = -480,
+		},
+		asTables = {
+			formattedIntegers = {
+				int1 = 2582,
+				int2 = 3483,
+				int3 = 5791,
+				table = {
+					int1 = 2582,
+					int2 = 3483,
+					int3 = 5791,
+				},
+				array = { 2582, 3483, 5791 },
 			},
 		},
 	},

@@ -39,13 +39,14 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
             -   [JSON](#json)
             -   [YAML](#yaml)
         -   [Output Formatting](#output-formatting)
+            -   [Formatting Integers](#formatting-integers)
             -   [Formatting TOML, JSON, or YAML](#formatting-toml-json-or-yaml)
         -   [Date and Time](#date-and-time)
     -   [Dependencies](#dependencies)
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Sun Feb 19 22:27:48 EST 2023 -->
+<!-- Added by: lebje, at: Thu Apr  6 11:30:48 EDT 2023 -->
 
 <!--te-->
 
@@ -205,55 +206,74 @@ end
 
 -   `temporalTypesAsUserData = false`: Lua tables are used to represent TOML date and time types.
 
+> The default value is `true`
+
+##### `formattedIntsAsUserData`
+
+-   `formattedIntsAsUserData = true`: The userdata type `toml.Int` is used to represent integers in octal, binary, or hexadecimal format.
+-   `formattedIntsAsUserData = false`: Integers in octal, binary, or hexadecimal format will be represented in decimal.
+
+> The default value is `false`
+
 ```lua
 local tomlStr = [[
 date = 1979-05-27
 time = 07:32:00
 datetime = 1979-05-27T07:32:00-07:00
+
+hexadecimal = 0x16C3
+binary = 0b110110011011
+octal = 0x169F
 ]]
 
-local table1 = toml.decode(tomlStr, { temporalTypesAsUserData = true })
-local table2 = toml.decode(tomlStr, { temporalTypesAsUserData = false })
+local table1 = toml.decode(tomlStr, { temporalTypesAsUserData = true, formattedIntsAsUserData = true })
+local table2 = toml.decode(tomlStr, { temporalTypesAsUserData = false, formattedIntsAsUserData = false })
 
 print(inspect(table1))
 --[[
 {
 	date = <userdata 1> -- 1979-05-27, <-- toml.Date
-	time = <userdata 2> -- 07:32:00, <-- toml.Time
-	datetime = <userdata 3> -- 1979-05-27T07:32:00-07:00 <-- toml.DateTime
+	time = <userdata 2> -- 07:32:00 <-- toml.Time
+	datetime = <userdata 3> -- 1979-05-27T07:32:00-07:00, <-- toml.DateTime
+	binary = <userdata 4> -- 0b10011011, <-- toml.Int (with `toml.formatting.int.binary` flag)
+	hexadecimal = <userdata 5> -- 0x16c3, <-- toml.Int (with `toml.formatting.int.octal` flag)
+	octal = <userdata 6> -- 0x169f, <-- toml.Int (with `toml.formatting.int.hexadecimal` flag)
 }
 --]]
 
 print(inspect(table2))
 --[[
 {
-  date = {
-    day = 27,
-    month = 5,
-    year = 1979
-  },
-  datetime = {
-    date = {
-      day = 27,
-      month = 5,
-      year = 1979
-    },
-    time = {
-      hour = 7,
-      minute = 32,
-      nanoSecond = 0,
-      second = 0
-    },
-    timeOffset = {
-      minutes = -420
-    }
-  },
-  time = {
-    hour = 7,
-    minute = 32,
-    nanoSecond = 0,
-    second = 0
-  }
+	date = {
+		day = 27,
+		month = 5,
+		year = 1979
+	},
+	time = {
+		hour = 7,
+		minute = 32,
+		nanoSecond = 0,
+		second = 0
+	},
+	datetime = {
+		date = {
+			day = 27,
+			month = 5,
+			year = 1979
+		},
+		time = {
+			hour = 7,
+			minute = 32,
+			nanoSecond = 0,
+			second = 0
+		},
+		timeOffset = {
+			minutes = -420
+		}
+	},
+	binary = 3483,
+	hexadecimal = 5827,
+	octal = 5791,
 }
 --]]
 ```
@@ -412,10 +432,8 @@ print(yaml)
 
 ### Output Formatting
 
-<!---
-Uncomment once toml.Int works.
-
 #### Formatting Integers
+
 ```lua
 local toml = require("toml")
 
@@ -443,8 +461,21 @@ int1 = 0o5026
 int2 = 0b110110011011
 int3 = 0x169F
 --]]
+
+-- Use `int` and `flags` properties to assign and retrieve flags and integers.
+local int = formattedIntegers.int1.int
+local flags = formattedIntegers.int1.flags
+
+formattedIntegers.int1.int = 5827
+formattedIntegers.int1.flags = toml.formatting.int.hexadecimal
+
+print(toml.encode(formattedIntegers))
+--[[
+int1 = 0x16C3
+int2 = 0b110110011011
+int3 = 0x169F
+--]]
 ```
--->
 
 #### Formatting TOML, JSON, or YAML
 
@@ -471,13 +502,13 @@ Passing an empty table removes all options, while not providing a table will use
 	--- Allow non-ASCII characters in strings (as opposed to their escaped form, e.g. `\u00DA`).
 	allow_unicode_strings = true,
 
-	--- Allow integers with `toml.formatting.int.binary` to be emitted as binary. (Not implemented yet)
+	--- Allow integers with `toml.formatting.int.binary` to be emitted as binary.
 	allowBinaryIntegers = true,
 
-	--- Allow integers with `toml.formatting.int.octal` to be emitted as octal. (Not implemented yet)
+	--- Allow integers with `toml.formatting.int.octal` to be emitted as octal.
 	allowOctalIntegers = true,
 
-	--- Allow integers with `toml.formatting.int.hexadecimal` to be emitted as hexadecimal. (Not implemented yet)
+	--- Allow integers with `toml.formatting.int.hexadecimal` to be emitted as hexadecimal.
 	allowHexadecimalIntegers = true,
 
 	--- Apply indentation to tables nested within other tables/arrays.

@@ -72,9 +72,30 @@ function TestDecoder:testInvalidInputs()
 end
 
 function TestDecoder:testFormattingOptions()
-	local asTables =
-		toml.decode(toml.encode(data.tableForFormattingTest.asUserdata), { temporalTypesAsUserData = false })
-	lu.assertEquals(asTables, data.tableForFormattingTest.asTables)
+	-- Temporal types
+	local temporalTypesAsTables = toml.decode(
+		toml.encode(data.tableForFormattingTest.temporalTypes.asUserdata),
+		{ temporalTypesAsUserData = false }
+	)
+	lu.assertEquals(temporalTypesAsTables, data.tableForFormattingTest.temporalTypes.asTables)
+
+	local temporalTypesAsUserData = toml.decode(
+		toml.encode(data.tableForFormattingTest.temporalTypes.asUserdata),
+		{ temporalTypesAsUserData = true }
+	)
+	lu.assertEquals(temporalTypesAsUserData, data.tableForFormattingTest.temporalTypes.asUserdata)
+
+	-- Formatted Integers
+
+	local unformattedIntegers = toml.decode(
+		toml.encode(data.tableForFormattingTest.integers.asUserdata),
+		{ allowBinaryIntegers = false, allowHexadecimalIntegers = false, allowOctalIntegers = false }
+	)
+	lu.assertEquals(unformattedIntegers, data.tableForFormattingTest.integers.asTables)
+
+	local formattedIntegers =
+		toml.decode(toml.encode(data.tableForFormattingTest.integers.asUserdata), { formattedIntsAsUserData = true })
+	lu.assertEquals(formattedIntegers, data.tableForFormattingTest.integers.asUserdata)
 end
 
 local function testFormatters(fileType, formatter)
@@ -98,8 +119,8 @@ function TestFormatters:testYAMLFormatter()
 end
 
 function TestUserdataAccessors:testTemporalTypesAccessors()
-	local dateTime = data.tableForFormattingTest.asUserdata.dob
-	local dateTimeTable = data.tableForFormattingTest.asTables.dob
+	local dateTime = data.tableForFormattingTest.temporalTypes.asUserdata.dob
+	local dateTimeTable = data.tableForFormattingTest.temporalTypes.asTables.dob
 
 	-- time offset
 	lu.assertEquals(dateTime.timeOffset.minutes, dateTimeTable.timeOffset.minutes)
@@ -114,6 +135,43 @@ function TestUserdataAccessors:testTemporalTypesAccessors()
 	lu.assertEquals(dateTime.date.day, dateTimeTable.date.day)
 	lu.assertEquals(dateTime.date.month, dateTimeTable.date.month)
 	lu.assertEquals(dateTime.date.year, dateTimeTable.date.year)
+end
+
+function TestUserdataAccessors:testIntAccessor()
+	-- Formatted
+	local fI = data.tableForFormattingTest.integers.asUserdata.formattedIntegers
+
+	-- Unformatted
+	local uFI = data.tableForFormattingTest.integers.asTables.formattedIntegers
+
+	lu.assertEquals(fI.int1.int, uFI.int1)
+	lu.assertEquals(fI.int1.flags, toml.formatting.int.octal)
+
+	lu.assertEquals(fI.int2.int, uFI.int2)
+	lu.assertEquals(fI.int2.flags, toml.formatting.int.binary)
+
+	lu.assertEquals(fI.int3.int, uFI.int3)
+	lu.assertEquals(fI.int3.flags, toml.formatting.int.hexadecimal)
+
+	-- fI.table, uFI.table
+	lu.assertEquals(fI.table.int1.int, uFI.table.int1)
+	lu.assertEquals(fI.table.int1.flags, toml.formatting.int.octal)
+
+	lu.assertEquals(fI.table.int2.int, uFI.table.int2)
+	lu.assertEquals(fI.table.int2.flags, toml.formatting.int.binary)
+
+	lu.assertEquals(fI.table.int3.int, uFI.table.int3)
+	lu.assertEquals(fI.table.int3.flags, toml.formatting.int.hexadecimal)
+
+	-- fI.array, uFI.array
+	lu.assertEquals(fI.array[1].int, uFI.array[1])
+	lu.assertEquals(fI.array[1].flags, toml.formatting.int.octal)
+
+	lu.assertEquals(fI.array[2].int, uFI.array[2])
+	lu.assertEquals(fI.array[2].flags, toml.formatting.int.binary)
+
+	lu.assertEquals(fI.array[3].int, uFI.array[3])
+	lu.assertEquals(fI.array[3].flags, toml.formatting.int.hexadecimal)
 end
 
 os.exit(lu.LuaUnit.run())

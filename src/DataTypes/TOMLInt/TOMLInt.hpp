@@ -28,6 +28,9 @@ struct TOMLInt {
 	int64_t getInt() const { return tomlInt.get(); }
 	void setInt(int64_t int64) { tomlInt = int64; }
 
+	toml::value_flags getFlags() const { return tomlInt.flags(); }
+	void setFlags(toml::value_flags flags) { tomlInt.flags(flags); }
+
 	bool operator==(const TOMLInt & right) const {
 		return tomlInt == right.tomlInt && tomlInt.flags() == right.tomlInt.flags();
 	}

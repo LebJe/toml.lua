@@ -229,19 +229,20 @@ extern "C" {
 
 		// Setup formatting flags
 
-		// auto formattingTable = module.create_named("formatting");
+		auto formattingTable = module.create_named("formatting");
 
-		// formattingTable.new_enum<toml::value_flags>(
-		// 	"int", { { "binary", toml::value_flags::format_as_binary },
-		// 				   { "hexadecimal", toml::value_flags::format_as_hexadecimal },
-		// 				   { "octal", toml::value_flags::format_as_octal } });
+		formattingTable.new_enum<toml::value_flags>(
+			"int", { { "binary", toml::value_flags::format_as_binary },
+					 { "hexadecimal", toml::value_flags::format_as_hexadecimal },
+					 { "octal", toml::value_flags::format_as_octal } });
 
-		// // Setup UserType = Int
+		// Setup UserType - Int
 
-		// sol::usertype<TOMLInt> tomlInt = module.new_usertype<TOMLInt>(
-		// 	"Int", sol::constructors<TOMLInt(int64_t), TOMLInt(int64_t, uint16_t)>());
+		sol::usertype<TOMLInt> tomlInt = module.new_usertype<TOMLInt>(
+			"Int", sol::constructors<TOMLInt(int64_t), TOMLInt(int64_t, uint16_t)>());
 
-		// tomlInt["int"] = sol::property(&TOMLInt::getInt, &TOMLInt::setInt);
+		tomlInt["int"] = sol::property(&TOMLInt::getInt, &TOMLInt::setInt);
+		tomlInt["flags"] = sol::property(&TOMLInt::getFlags, &TOMLInt::setFlags);
 
 		// Setup UserType - Date
 

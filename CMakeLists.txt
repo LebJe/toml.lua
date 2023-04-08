@@ -41,7 +41,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/marzer/tomlplusplus.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v3.3.0"
+	GIT_TAG "ad55bae8a11a6eee39e2292b01e95b529b105767"
 )
 
 FetchContent_Declare(
