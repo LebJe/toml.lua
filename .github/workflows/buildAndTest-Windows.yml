@@ -24,10 +24,7 @@ jobs:
               uses: "e-t-l/setup-mingw@patch-1"
               with:
                   platform: "x64"
-            - name: "Set up MSVC"
-              if: "${{ matrix.compiler == 'MSVC' }}"
-              uses: "ilammy/msvc-dev-cmd@v1"
-            - name: "Build Project"
+            - name: "Configure Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
 
@@ -52,7 +49,14 @@ jobs:
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)"
                   
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config
-                  
+            - name: "Set up MSVC"
+              if: "${{ matrix.compiler == 'MSVC' }}"
+              uses: "ilammy/msvc-dev-cmd@v1"
+            - name: "Build Project"
+              run: |
+                  $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
+                  $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
+                  $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
             - name: "Run Tests"
               run: |
