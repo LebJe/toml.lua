@@ -70,6 +70,6 @@ jobs:
                   
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install luaunit
                   
-                  if (("${{ matrix.compiler }}" -not "MSVC")) {
+                  if (("${{ matrix.compiler }}" -ne "MSVC")) {
                     LuaJIT\bin\luajit.exe tests\tests.lua
                   }
