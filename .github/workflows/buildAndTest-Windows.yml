@@ -26,7 +26,7 @@ jobs:
                   platform: "x64"
             - name: "Set up MSVC"
               if: "${{ matrix.compiler == 'MSVC' }}"
-              uses: "seanmiddleditch/gha-setup-vsdevenv@master"
+              uses: "compnerd/gha-setup-vsdevenv@main"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
@@ -48,8 +48,6 @@ jobs:
                   } else {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
                   }
-                  
-                  cmake.exe --help
                   
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)"
                   
