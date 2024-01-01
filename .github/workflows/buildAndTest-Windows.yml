@@ -37,17 +37,16 @@ jobs:
 
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
 
-                  if (("${{ matrix.compiler }}" -eq "MinGW")) {
+                  #if (("${{ matrix.compiler }}" -eq "MinGW")) {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path LuaJIT\bin\lua51.dll)"
-                  }
+                  #}
 
                   if (("${{ matrix.compiler }}" -eq "MSVC")) {
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Visual Studio 17 2022"
-                  
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Visual Studio 17 2022"
                   } else {
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
-                  
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
                   }
+                  
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
             - name: "Run Tests"
               run: |
