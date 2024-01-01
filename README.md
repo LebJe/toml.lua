@@ -56,7 +56,7 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 
 ### Requirements
 
--   A C++ 17 compiler
+-   A C++ 17 compiler (Clang, GCC, MinGW)
 -   [CMake](https://cmake.org)
 -   Lua C headers (`lua.h`, `lualib.h`, and `lauxlib.h`)
 -   Lua library (e.g. `liblua51.<so|dylib|dll>`)
@@ -74,7 +74,7 @@ luarocks install toml
 
 ##### LLVM
 
-If you have installed Clang, and CMake is configured to use it, you can run:
+If you have installed Clang (<https://llvm.org>), and CMake is configured to use it, you can run:
 
 ```powershell
 luarocks install toml
@@ -82,7 +82,7 @@ luarocks install toml
 
 ##### MinGW
 
-If you have installed MinGW, and CMake is configured to use it, you can run:
+If you have installed [MinGW](https://www.mingw-w64.org/), and CMake is configured to use it, you can run:
 
 ```powershell
 luarocks config variables.LINK_FLAGS "path\to\LuaJIT\bin\lua51.dll"

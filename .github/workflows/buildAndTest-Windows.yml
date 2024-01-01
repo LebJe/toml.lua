@@ -69,5 +69,7 @@ jobs:
                   $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua;$($pwd.Path)\?.lua"
                   
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install luaunit
-
-                  #LuaJIT\bin\luajit.exe tests\tests.lua
+                  
+                  if (("${{ matrix.compiler }}" -not "MSVC")) {
+                    LuaJIT\bin\luajit.exe tests\tests.lua
+                  }
