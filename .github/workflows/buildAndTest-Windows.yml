@@ -24,9 +24,9 @@ jobs:
               uses: "e-t-l/setup-mingw@patch-1"
               with:
                   platform: "x64"
-            # - name: "Set up MSVC"
-            #   if: "${{ matrix.compiler == 'MSVC' }}"
-            #   uses: "seanmiddleditch/gha-setup-vsdevenv@master"
+            - name: "Set up MSVC"
+              if: "${{ matrix.compiler == 'MSVC' }}"
+              uses: "seanmiddleditch/gha-setup-vsdevenv@master"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
@@ -42,6 +42,8 @@ jobs:
                   }
 
                   if (("${{ matrix.compiler }}" -eq "MSVC")) {
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LUALIB "lua51.dll"
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Visual Studio 17 2022"
                   } else {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
