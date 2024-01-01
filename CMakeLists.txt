@@ -126,7 +126,7 @@ set(SOURCES
 add_library(toml.lua MODULE ${SOURCES})
 source_group(src FILES ${SOURCES})
 
-if(WIN32 AND "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+if(WIN32 AND "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR MSVC)
 	target_link_options(toml.lua PUBLIC ${PROJECT_SOURCE_DIR}\\libs\\lua51.lib)
 else() 
     target_link_libraries(toml.lua ${LUA_LIBRARIES} tomlplusplus::tomlplusplus)    
