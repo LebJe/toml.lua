@@ -26,7 +26,7 @@ jobs:
                   platform: "x64"
             - name: "Set up MSVC"
               if: "${{ matrix.compiler == 'MSVC' }}"
-              uses: "compnerd/gha-setup-vsdevenv@main"
+              uses: "ilammy/msvc-dev-cmd@v1"
             - name: "Build Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
