@@ -2,7 +2,7 @@
 #include "Options.hpp"
 #include "toml.hpp"
 #include <iostream>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <map>
 #include <sol/sol.hpp>
 

@@ -62,8 +62,22 @@ function TestDecoder:testInvalidInputs()
 		reason = "Error while parsing key-value pair: cannot redefine existing integer as dotted key-value pair",
 	}
 
-	local succeeded1, table1 = pcall(toml.decodeFromFile, "tests/test-data/invalidTable.toml")
-	local succeeded2, table2 = pcall(toml.decodeFromFile, "tests/test-data/multipleDotKeyInvalid.toml")
+	-- Test `decodeFromFile`
+	local decodeFromFileSucceeded1, decodeFromFileTable1 =
+		pcall(toml.decodeFromFile, "tests/test-data/invalidTable.toml")
+	local decodeFromFileSucceeded2, decodeFromFileTable2 =
+		pcall(toml.decodeFromFile, "tests/test-data/multipleDotKeyInvalid.toml")
+
+	lu.assertFalse(decodeFromFileSucceeded1)
+	lu.assertFalse(decodeFromFileSucceeded2)
+	lu.assertEquals(decodeFromFileTable1, expectedError1)
+	lu.assertEquals(decodeFromFileTable2, expectedError2)
+
+	-- Test `decode`
+	local invalidTable = read("tests/test-data/invalidTable.toml")
+	local multipleDotKeyInvalid = read("tests/test-data/multipleDotKeyInvalid.toml")
+	local succeeded1, table1 = pcall(toml.decode, invalidTable)
+	local succeeded2, table2 = pcall(toml.decode, multipleDotKeyInvalid)
 
 	lu.assertFalse(succeeded1)
 	lu.assertFalse(succeeded2)

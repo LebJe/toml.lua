@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0](https://github.com/LebJe/toml.lua/releases/tag/0.4.0) - 2023-04-07
+## [0.4.0](https://github.com/LebJe/toml.lua/releases/tag/0.4.0) - 2023-12-31
 
 ### Added
 
@@ -37,7 +37,7 @@ int3 = 0x169F
 -   `toml.encodeToFile(data: table, fileOrOptions: string|table)`:
     -   Encodes `data` to the file specified in `fileOrOptions`. the file will be created if it doesn't exist.
         -   When `fileOrOptions` is a string, it simply is the file path.
-        -   When `fileOrOptions` is a table, it should have`file`, and optionally, `overwrite` as keys. `file` is the file path, and `overwrite` should be `true` when `file` should be `overwritten` with `data`, and `false` when `data` should be appended to `file`.
+        -   When `fileOrOptions` is a table, it should have`file`, and optionally, `overwrite` as keys. `file` is the file path, and `overwrite` should be `true` when `file` should be overwritten with `data`, and `false` when `data` should be appended to `file`.
 -   Added tests that cover:
     -   The property accessors of `toml.Date`, `toml.Time`, `toml.DateTime`, and `toml.TimeOffset`.
     -   `toml.toJSON` and `toml.toYAML`.

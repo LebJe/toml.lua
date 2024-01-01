@@ -11,3 +11,7 @@ Brewfile.lock.json
 .vscode/
 .nova/
 .vim/
+
+# Test files
+test.lua
+inspect.lua

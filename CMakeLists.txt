@@ -13,7 +13,7 @@ if(NOT TOML_LUA_VERSION)
         execute_process(COMMAND ${GIT_EXECUTABLE} describe --dirty
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             RESULT_VARIABLE ret
-            OUTPUT_VARIABLE LUA_RAPIDJSON_VERSION
+            OUTPUT_VARIABLE TOML_LUA_VERSION
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
         if(NOT ret EQUAL "0")
@@ -41,7 +41,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/marzer/tomlplusplus.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "ad55bae8a11a6eee39e2292b01e95b529b105767"
+	GIT_TAG "v3.4.0"
 )
 
 FetchContent_Declare(
@@ -57,13 +57,13 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/Neargye/magic_enum.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v0.8.2"
+	GIT_TAG "v0.9.5"
 )
 
 FetchContent_GetProperties(${TOML++})
 if(NOT ${TOML++}_POPULATED)
     message(STATUS "Cloning ${TOML++}")
-	FetchContent_Populate(${TOML++}) 
+	#FetchContent_Populate(${TOML++}) 
     FetchContent_MakeAvailable(${TOML++})
 endif()
 
@@ -107,7 +107,6 @@ else(UNIX)
     endif(WIN32)
 endif(UNIX)
 
-
 if(NOT LUA_INCLUDE_DIR OR (WIN32 AND NOT LUA_LIBRARIES))
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
     find_package(Lua)
@@ -130,7 +129,7 @@ source_group(src FILES ${SOURCES})
 if(WIN32 AND "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 	target_link_options(toml.lua PUBLIC ${PROJECT_SOURCE_DIR}\\libs\\lua51.lib)
 else() 
-    target_link_libraries(toml.lua ${LUA_LIBRARIES})    
+    target_link_libraries(toml.lua ${LUA_LIBRARIES} tomlplusplus::tomlplusplus)    
 endif()
 
 if (LINK_FLAGS)
