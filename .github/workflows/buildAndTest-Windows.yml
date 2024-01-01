@@ -49,6 +49,8 @@ jobs:
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)"
                   
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config
+                  
+                  Get-Content LuaRocks\tree\luaRocksConfig.lua
             - name: "Set up MSVC"
               if: "${{ matrix.compiler == 'MSVC' }}"
               uses: "TheMrMilchmann/setup-msvc-dev@v3"
@@ -64,6 +66,7 @@ jobs:
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUALIB" "lua51.dll"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config
+                  Get-Content LuaRocks\tree\luaRocksConfig.lua
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
             - name: "Run Tests"
               run: |
