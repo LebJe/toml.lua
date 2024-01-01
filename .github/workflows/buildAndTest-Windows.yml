@@ -51,13 +51,15 @@ jobs:
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config
             - name: "Set up MSVC"
               if: "${{ matrix.compiler == 'MSVC' }}"
-              uses: "ilammy/msvc-dev-cmd@v1"
+              uses: "TheMrMilchmann/setup-msvc-dev@v3"
             - name: "Build Project"
               run: |
                   $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
                   $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
                   $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
                   
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUA_LIBDIR" "$(Resolve-Path LuaJIT)bin"
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUALIB" "lua51.dll"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
