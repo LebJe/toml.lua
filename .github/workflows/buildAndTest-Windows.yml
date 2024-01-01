@@ -64,8 +64,8 @@ jobs:
                   
                   Get-Content LuaRocks\tree\luaRocksConfig.lua
                   
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUA_LIBDIR" "$(Resolve-Path LuaJIT\bin\lua51.dll)"
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUALIB" "lua51.dll"
+                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUA_LIBDIR" "$(Resolve-Path libs\lua51.lib)"
+                  #LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUALIB" "lua51.dll"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)"
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config
                   Get-Content LuaRocks\tree\luaRocksConfig.lua
