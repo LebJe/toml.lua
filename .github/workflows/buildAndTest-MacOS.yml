@@ -8,11 +8,19 @@ jobs:
         strategy:
             matrix:
                 lua: ["lua", "luajit"]
+                compiler: ["gcc", "clang"]
         steps:
             - uses: "actions/checkout@v4"
             - name: "Install Dependencies"
               run: |
                   brew install ${{ matrix.lua }} luarocks
+
+                  if [[ ${{ matrix.compiler }} = "gcc" ]]; then
+                    brew install gcc
+                    luarocks config "variables.CMAKE_C_COMPILER" "$(brew --prefix)/gcc-13"
+                    luarocks config "variables.CMAKE_CXX_COMPILER" "$(brew --prefix)/g++-13"
+                  fi
+
                   luarocks install luaunit
             - name: "Build Project"
               run: "luarocks make"
