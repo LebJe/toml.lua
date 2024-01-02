@@ -5,7 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0](https://github.com/LebJe/toml.lua/releases/tag/0.2.0) - 2023-02-19
+## [0.4.0](https://github.com/LebJe/toml.lua/releases/tag/0.4.0) - 2024-01-02
+
+### Added
+
+-   `toml.Int` for formatted integers.
+
+```lua
+local formattedIntegers = {
+	int1 = toml.Int.new(2582, toml.formatting.int.octal),
+	int2 = toml.Int.new(3483, toml.formatting.int.binary),
+	int3 = toml.Int.new(5791, toml.formatting.int.hexadecimal)
+}
+
+print(toml.encode(formattedIntegers))
+--[[
+int1 = 0o5026
+int2 = 0b110110011011
+int3 = 0x169F
+--]]
+```
+
+-   `formattedIntsAsUserdata` can be passed to the options table of `toml.decode` (see "Decoding Options" in the README).
+-   Updated to toml++ v3.4.0.
+-   Updated to MagicEnum v0.9.5.
+-   toml.lua compiles with MSVC.
+
+## [0.3.0](https://github.com/LebJe/toml.lua/releases/tag/0.3.0) - 2023-02-19
 
 ### Added
 
@@ -14,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   `toml.encodeToFile(data: table, fileOrOptions: string|table)`:
     -   Encodes `data` to the file specified in `fileOrOptions`. the file will be created if it doesn't exist.
         -   When `fileOrOptions` is a string, it simply is the file path.
-        -   When `fileOrOptions` is a table, it should have`file`, and optionally, `overwrite` as keys. `file` is the file path, and `overwrite` should be `true` when `file` should be `overwritten` with `data`, and `false` when `data` should be appended to `file`.
+        -   When `fileOrOptions` is a table, it should have`file`, and optionally, `overwrite` as keys. `file` is the file path, and `overwrite` should be `true` when `file` should be overwritten with `data`, and `false` when `data` should be appended to `file`.
 -   Added tests that cover:
     -   The property accessors of `toml.Date`, `toml.Time`, `toml.DateTime`, and `toml.TimeOffset`.
     -   `toml.toJSON` and `toml.toYAML`.

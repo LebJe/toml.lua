@@ -84,14 +84,31 @@ local record toml
 
 		metamethod __tostring: function(DateTime): string
 	end
+	
+	record Int
+		userdata
+		int: number
+		
+		new: function(int: number, flags: formatting.int): Int
+
+		metamethod __tostring: function(Int): string
+	end
+	
+	record formatting
+		record int
+			binary: number
+			octal: number
+			hexadecimal: number
+		end
+	end
 
 	record DecodingOptions
-		--formattedIntsAsUserData: boolean
+		formattedIntsAsUserData: boolean
 		temporalTypesAsUserData: boolean
 	end
 	
 	record EncodeToFileOptions
-		file: string,
+		file: string
 		overwrite: boolean
 	end
 	
@@ -127,13 +144,13 @@ local record toml
 		indentArrayElements: boolean
 
 		--- Combination of `indentSubTables` and `indentArrayElements`.
-		indentation: boolean,
+		indentation: boolean
 		
 		--- Emit floating-point values with relaxed (human-friendly) precision.
 		--- Warning: Setting this flag may cause serialized documents to no longer round-
 		--- trip correctly since floats might have a less precise value upon being written out
 		--- than they did when being read in. Use this flag at your own risk.
-		relaxedFloatPrecision: boolean,
+		relaxedFloatPrecision: boolean
 	
 		--- Avoids the use of whitespace around key-value pairs.
 		terseKeyValuePairs: boolean

@@ -2,7 +2,7 @@
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
     - repo: "https://github.com/pre-commit/mirrors-prettier.git"
-      rev: "v2.4.1"
+      rev: "v4.0.0-alpha.8"
       hooks:
           - id: "prettier"
             name: "Format YAML & Markdown"

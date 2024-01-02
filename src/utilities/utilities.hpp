@@ -3,7 +3,7 @@
 
 #include <Options.hpp>
 #include <cstddef>
-#include <magic_enum.hpp>
+#include <magic_enum/magic_enum.hpp>
 #include <optional>
 #include <sol/sol.hpp>
 #include <string>

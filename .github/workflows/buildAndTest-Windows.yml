@@ -7,9 +7,9 @@ jobs:
         runs-on: "windows-latest"
         strategy:
             matrix:
-                compiler: ["LLVM", "MinGW"]
+                compiler: ["LLVM", "MinGW", "MSVC"]
         steps:
-            - uses: "actions/checkout@v3"
+            - uses: "actions/checkout@v4"
             - name: "Install Dependencies"
               run: "choco install -y cmake ninja"
             - name: "Build LuaJIT"
@@ -21,13 +21,13 @@ jobs:
               uses: "egor-tensin/setup-clang@v1"
             - name: "Set up MinGW"
               if: "${{ matrix.compiler == 'MinGW' }}"
-              uses: "egor-tensin/setup-mingw@v2"
+              uses: "e-t-l/setup-mingw@patch-1"
               with:
                   platform: "x64"
             - name: "Set up MSVC"
               if: "${{ matrix.compiler == 'MSVC' }}"
-              uses: "seanmiddleditch/gha-setup-vsdevenv@master"
-            - name: "Build Project"
+              uses: "compnerd/gha-setup-vsdevenv@main"
+            - name: "Configure Project"
               run: |
                   New-Item -Path "LuaRocks\tree\luaRocksConfig.lua" -ItemType File
 
@@ -35,13 +35,25 @@ jobs:
                   $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
                   $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
 
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LUA_LIBDIR "$(Resolve-Path LuaJIT\bin\)"
-
-                  if (("${{ matrix.compiler }}" -eq "MinGW") -or ("${{ matrix.compiler }}" -eq "MSVC")) {
+                  if (("${{ matrix.compiler }}" -eq "MinGW")) {
                     LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config variables.LINK_FLAGS "$(Resolve-Path LuaJIT\bin\lua51.dll)"
                   }
 
-                  LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
+                  if (("${{ matrix.compiler }}" -eq "MSVC")) {
+                    Copy-Item "$(Resolve-Path libs\lua51.lib)" -Destination "$(Resolve-Path LuaJIT\bin)"
+                    
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUA_LIBDIR" "$(Resolve-Path LuaJIT\bin\)"
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Visual Studio 17 2022"
+                  } else {
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config "variables.LUA_LIBDIR" "$(Resolve-Path LuaJIT\bin)"
+                    LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" config cmake_generator "Ninja Multi-Config"
+                  }
+            - name: "Build Project"
+              run: |
+                  $env:LUAROCKS_TREE=$(Resolve-Path LuaRocks\tree)
+                  $env:LUAROCKS_LUADIR=$(Resolve-Path LuaJIT\)
+                  $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
+
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" make
             - name: "Run Tests"
               run: |
@@ -51,6 +63,9 @@ jobs:
                   $env:LUAROCKS_CONFIG="$(Resolve-Path LuaRocks\tree\luaRocksConfig.lua)"
                   $env:LUA_CPATH="$(Resolve-Path LuaRocks\tree\lib\lua\5.1\)?.dll"
                   $env:LUA_PATH="$(Resolve-Path LuaRocks\tree\share\lua\5.1\)?.lua;$($pwd.Path)\?.lua"
+
                   LuaRocks\luarocks.exe --lua-dir "$($env:LUAROCKS_LUADIR)" --tree "$($env:LUAROCKS_TREE)" install luaunit
 
-                  LuaJIT\bin\luajit.exe tests\tests.lua
+                  if (("${{ matrix.compiler }}" -ne "MSVC")) {
+                    LuaJIT\bin\luajit.exe tests\tests.lua
+                  }
