@@ -32,6 +32,7 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
         -   [Decoding](#decoding)
             -   [Decoding Options](#decoding-options)
                 -   [temporalTypesAsUserData](#temporaltypesasuserdata)
+                -   [formattedIntsAsUserData](#formattedintsasuserdata)
         -   [Encoding](#encoding)
         -   [Error Handling](#error-handling)
         -   [Inline Tables](#inline-tables)
@@ -46,7 +47,8 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
     -   [Licenses](#licenses)
     -   [Contributing](#contributing)
 
-<!-- Added by: lebje, at: Thu Apr  6 11:30:48 EDT 2023 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: lebje, at: Tue Jan  2 11:59:28 EST 2024 -->
 
 <!--te-->
 
