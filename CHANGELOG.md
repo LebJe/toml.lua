@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0](https://github.com/LebJe/toml.lua/releases/tag/0.4.0) - 2023-12-31
+## [0.4.0](https://github.com/LebJe/toml.lua/releases/tag/0.4.0) - 2024-01-02
 
 ### Added
 
@@ -27,6 +27,9 @@ int3 = 0x169F
 ```
 
 -   `formattedIntsAsUserdata` can be passed to the options table of `toml.decode` (see "Decoding Options" in the README).
+ -   Updated to toml++ v3.4.0.
+ -   Updated to MagicEnum v0.9.5.
+ -   toml.lua compiles with MSVC.
 
 ## [0.3.0](https://github.com/LebJe/toml.lua/releases/tag/0.3.0) - 2023-02-19
 
