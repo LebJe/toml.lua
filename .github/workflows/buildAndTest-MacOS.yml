@@ -15,14 +15,17 @@ jobs:
               run: |
                   brew install ${{ matrix.lua }} luarocks
 
-                  if [[ ${{ matrix.compiler }} = "gcc" ]]; then
+                  if [[ "${{ matrix.compiler }}" = "gcc" ]]; then
                     brew install gcc
-                    luarocks config "variables.CMAKE_C_COMPILER" "$(brew --prefix)/gcc-13"
-                    luarocks config "variables.CMAKE_CXX_COMPILER" "$(brew --prefix)/g++-13"
+                    luarocks config "variables.CMAKE_C_COMPILER" "$(brew --prefix)/bin/gcc-13"
+                    luarocks config "variables.CMAKE_CXX_COMPILER" "$(brew --prefix)/bin/g++-13"
                   fi
 
                   luarocks install luaunit
             - name: "Build Project"
-              run: "luarocks make"
+              run: |
+                  export CXX_COMPILER="$(brew --prefix)/bin/g++-13"                                                                                         │
+                  export C_COMPILER="$(brew --prefix)/bin/gcc-13"
+                  CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
               run: "lua tests/tests.lua"
