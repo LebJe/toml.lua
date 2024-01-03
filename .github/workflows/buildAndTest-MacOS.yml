@@ -24,7 +24,7 @@ jobs:
                   luarocks install luaunit
             - name: "Build Project"
               run: |
-                  export CXX_COMPILER="$(brew --prefix)/bin/g++-13"                                                                                         │
+                  export CXX_COMPILER="$(brew --prefix)/bin/g++-13"
                   export C_COMPILER="$(brew --prefix)/bin/gcc-13"
                   CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
