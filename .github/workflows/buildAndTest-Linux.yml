@@ -11,6 +11,7 @@ jobs:
                 lua:
                     [
                         "luajit libluajit-5.1-dev libluajit-5.1-2",
+                        "liblua5.4-dev lua5.4",
                         "liblua5.3-dev lua5.3",
                         "liblua5.2-dev lua5.2",
                         "liblua5.1-0-dev lua5.1",
