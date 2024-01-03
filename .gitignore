@@ -11,6 +11,7 @@ Brewfile.lock.json
 .vscode/
 .nova/
 .vim/
+node_modules
 
 # Test files
 test.lua

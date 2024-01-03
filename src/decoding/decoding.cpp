@@ -12,7 +12,9 @@ void insertNodeInTable(
 			auto v = std::string(*node->as_string());
 			try {
 				luaTable[std::get<std::string>(keyOrIndex)] = v;
-			} catch (std::bad_variant_access) { luaTable[std::get<size_t>(keyOrIndex)] = v; }
+			} catch (std::bad_variant_access const &) {
+				luaTable[std::get<size_t>(keyOrIndex)] = v;
+			}
 			break;
 		}
 
@@ -24,7 +26,7 @@ void insertNodeInTable(
 				} else {
 					luaTable[std::get<std::string>(keyOrIndex)] = v.get();
 				}
-			} catch (std::bad_variant_access) {
+			} catch (std::bad_variant_access const &) {
 				if (options.formattedIntsAsUserData && v.flags() != toml::value_flags::none) {
 					luaTable[std::get<size_t>(keyOrIndex)] = TOMLInt(v, v.flags());
 				} else {
@@ -40,7 +42,9 @@ void insertNodeInTable(
 
 			try {
 				luaTable[std::get<std::string>(keyOrIndex)] = v;
-			} catch (std::bad_variant_access) { luaTable[std::get<size_t>(keyOrIndex)] = v; }
+			} catch (std::bad_variant_access const &) {
+				luaTable[std::get<size_t>(keyOrIndex)] = v;
+			}
 
 			break;
 		}
@@ -50,7 +54,9 @@ void insertNodeInTable(
 
 			try {
 				luaTable[std::get<std::string>(keyOrIndex)] = v;
-			} catch (std::bad_variant_access) { luaTable[std::get<size_t>(keyOrIndex)] = v; }
+			} catch (std::bad_variant_access const &) {
+				luaTable[std::get<size_t>(keyOrIndex)] = v;
+			}
 
 			break;
 		}
@@ -63,7 +69,7 @@ void insertNodeInTable(
 
 			try {
 				luaTable[std::get<std::string>(keyOrIndex)] = newLTable;
-			} catch (std::bad_variant_access) {
+			} catch (std::bad_variant_access const &) {
 				luaTable[std::get<size_t>(keyOrIndex)] = newLTable;
 			}
 
@@ -78,7 +84,7 @@ void insertNodeInTable(
 
 			try {
 				luaTable[std::get<std::string>(keyOrIndex)] = newLTable;
-			} catch (std::bad_variant_access) {
+			} catch (std::bad_variant_access const &) {
 				luaTable[std::get<size_t>(keyOrIndex)] = newLTable;
 			}
 
@@ -95,7 +101,7 @@ void insertNodeInTable(
 					v.toTable(t);
 					luaTable[std::get<std::string>(keyOrIndex)] = t;
 				}
-			} catch (std::bad_variant_access) {
+			} catch (std::bad_variant_access const &) {
 				if (options.temporalTypesAsUserData) {
 					luaTable[std::get<size_t>(keyOrIndex)] = v;
 				} else {
@@ -118,7 +124,7 @@ void insertNodeInTable(
 					v.toTable(t);
 					luaTable[std::get<std::string>(keyOrIndex)] = t;
 				}
-			} catch (std::bad_variant_access) {
+			} catch (std::bad_variant_access const &) {
 				if (options.temporalTypesAsUserData) {
 					luaTable[std::get<size_t>(keyOrIndex)] = v;
 				} else {
@@ -145,7 +151,7 @@ void insertNodeInTable(
 					dt.toTable(t);
 					luaTable[std::get<std::string>(keyOrIndex)] = t;
 				}
-			} catch (std::bad_variant_access) {
+			} catch (std::bad_variant_access const &) {
 				if (options.temporalTypesAsUserData) {
 					luaTable[std::get<size_t>(keyOrIndex)] = dt;
 				} else {

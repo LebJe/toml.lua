@@ -15,7 +15,7 @@ void unpack(
 	try {
 		auto t = std::get<std::tuple<toml::table *, std::string>>(tableOrArray);
 		tableFunc(std::get<0>(t), std::get<1>(t));
-	} catch (std::bad_variant_access) {
+	} catch (std::bad_variant_access const &) {
 		auto a = std::get<toml::array *>(tableOrArray);
 		arrayFunc(a);
 	}

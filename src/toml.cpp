@@ -157,7 +157,7 @@ extern "C" {
 				tomlToLuaTable(tomlTable, luaTable, options);
 
 				return luaTable.push();
-			} catch (std::bad_variant_access) { return std::get<int>(res); }
+			} catch (std::bad_variant_access const &) { return std::get<int>(res); }
 		} catch (std::exception & e) {
 			return luaL_error(
 				L, (std::string("An error occurred during decoding: ") + e.what()).c_str());
