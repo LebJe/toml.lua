@@ -57,27 +57,24 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/Neargye/magic_enum.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v0.9.5"
+	GIT_TAG "v0.9.7"
 )
 
 FetchContent_GetProperties(${TOML++})
 if(NOT ${TOML++}_POPULATED)
     message(STATUS "Cloning ${TOML++}")
-	#FetchContent_Populate(${TOML++}) 
     FetchContent_MakeAvailable(${TOML++})
 endif()
 
 FetchContent_GetProperties(${SOL2})
 if(NOT ${SOL2}_POPULATED)
     message(STATUS "Cloning ${SOL2}")
-	FetchContent_Populate(${SOL2})
     FetchContent_MakeAvailable(${SOL2})
 endif()
 
 FetchContent_GetProperties(${MAGIC_ENUM})
 if(NOT ${MAGIC_ENUM}_POPULATED)
     message(STATUS "Cloning ${MAGIC_ENUM}")
-	FetchContent_Populate(${MAGIC_ENUM})
     FetchContent_MakeAvailable(${MAGIC_ENUM})
 endif()
 

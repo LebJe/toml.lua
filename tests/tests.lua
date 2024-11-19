@@ -1,4 +1,4 @@
-lu = require("luaunit")
+local lu = require("luaunit")
 local toml = require("toml")
 local data = require("tests/tables")
 
@@ -27,6 +27,17 @@ end
 function TestEncoder:testEncodeMassiveTable()
 	local massive = read("tests/test-data/massive.toml")
 	lu.assertEquals(toml.encode(data.tableForMassiveToml), massive)
+end
+
+function TestEncoder:testEncodingOptions()
+	local terseKeysToml = read("tests/test-data/encoding/terseKeys+qoutedTimestamps.toml")
+
+	lu.assertEquals(toml.encode(toml.decode(terseKeysToml), { terseKeyValuePairs = true, quoteDatesAndTimes = true }), terseKeysToml)
+
+	local noIndentationJSON = read("tests/test-data/encoding/noIndentation.json")
+
+	lu.assertEquals(toml.toJSON(toml.decode(terseKeysToml), { indentation = false }), noIndentationJSON)
+	
 end
 
 function TestDecoder:testDecodeSamples()

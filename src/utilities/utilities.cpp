@@ -19,6 +19,7 @@ static std::map<format_flags, bool> defaultFlags =
 										 { format_flags::allow_hexadecimal_integers, true },
 										 { format_flags::allow_octal_integers, true },
 										 { format_flags::indent_sub_tables, false },
+										 { format_flags::indent_array_elements, false },
 										 { format_flags::indentation, true },
 										 { format_flags::relaxed_float_precision, false },
 										 { format_flags::terse_key_value_pairs, false } };
@@ -92,19 +93,28 @@ inline toml::format_flags defaultFormatFlags() {
 	return flags;
 }
 
-void addFlag(toml::format_flags & flags, sol::table & flagsTable, toml::format_flags flagToAdd) {
-	auto tableFlag = flagsTable[camelCase(magic_enum::enum_name(flagToAdd))];
+// void addFlag(toml::format_flags & flags, sol::table & flagsTable, toml::format_flags flagToAdd) {
+// 	auto tableFlag = flagsTable[camelCase(magic_enum::enum_name(flagToAdd))];
 
-	if (tableFlag.valid()) {
-		flags |= tableFlag.get<bool>() ? flagToAdd : flags;
-	} else {
-		// Use default
-		flags |= defaultFlags[flagToAdd] ? flagToAdd : flags;
-	};
-}
+// 	std::cout << "addFlag: \nenum_name: " << magic_enum::enum_name(flagToAdd) << "\n";
+	
+// 	std::cout << "camel case name: " << camelCase(magic_enum::enum_name(flagToAdd)) << "\n";
+
+// 	if (tableFlag.valid()) {
+// 		std::cout << "Is valid: " << camelCase(magic_enum::enum_name(flagToAdd)) << "\n";
+// 		if (tableFlag.get<bool>()) {
+// 			flags |= flagToAdd;
+// 		}
+// 	} else {
+// 		// Use default
+// 		if (defaultFlags[flagToAdd]) {
+// 			flags |= flagToAdd;
+// 		}
+// 	};
+// }
 
 toml::format_flags tableToFormatFlags(sol::optional<sol::table> t) {
-	auto flags = format_flags();
+	auto flags = format_flags::none;
 
 	// Set default flags.
 	if (!t) {
@@ -116,14 +126,45 @@ toml::format_flags tableToFormatFlags(sol::optional<sol::table> t) {
 
 	// User passed an empty table to clear all flags.
 	if (table.empty()) return flags;
-
-	constexpr auto f = magic_enum::enum_values<format_flags>();
-	for (auto flag : f) {
-		addFlag(flags, table, flag);
+	
+	// Set default flags, and allow user to override
+	//flags = defaultFormatFlags();
+	
+	// Set default flags, and allow user to override
+	std::map<format_flags, bool> userFlags = defaultFlags;
+	
+	for (auto [flag, enabled] : userFlags) {
+		std::string camelCaseFlagName = camelCase(magic_enum::enum_name(flag));
+		if (table[camelCaseFlagName].valid()) {
+			userFlags[flag] = table[camelCaseFlagName].get<bool>();
+		}
 	}
+	
+	// `format_flags::indentation` is returned as an empty string from `magic_enum::enum_name`, so we must handle it separately.
+	if (table["indentation"].valid()) {
+		userFlags[toml::format_flags::indentation] = table["indentation"].get<bool>();
+	}
+	
+	std::cout << "UserFlags:\n";
+	
+	for (auto [flag, enabled] : userFlags) {
+		std::cout << "Flag: " << magic_enum::enum_name(flag) << ", Enabled: " << (enabled ? "True" : "False") << "\n";
+	}
+	
+	for (auto [flag, enabled] : userFlags) {
+		if (enabled) flags |= flag;
+	}
+	
+	// constexpr auto f = magic_enum::enum_values<format_flags>();
+	// for (auto flag : f) {
+	// 	addFlag(flags, table, flag);
+	// }
 
-	// `format_flags::indentation` is not returned from `enum_values`.
-	addFlag(flags, table, format_flags::indentation);
+	// // `format_flags::indentation` is not returned from `enum_values`, so we must handle it separately.
+	// if (table["indentation"].valid()) {
+	// 	flags |= toml::format_flags::indentation;
+	// }
+	
 	return flags;
 }
 

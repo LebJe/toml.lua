@@ -481,7 +481,7 @@ int3 = 0x169F
 
 #### Formatting TOML, JSON, or YAML
 
-`toml.encode`, `toml.encodeToFile`, `toml.toJSON`, and `toml.toYAML` all take an optional second parameter: a table containing keys that disable or enable different formatting options.
+`toml.encode`, `toml.encodeToFile`, `toml.toJSON`, and `toml.toYAML` all take an optional second (third in the case of `toml.encodeToFile`) parameter: a table containing keys that disable or enable different formatting options.
 Passing an empty table removes all options, while not providing a table will use the default options.
 
 ```lua
@@ -514,10 +514,10 @@ Passing an empty table removes all options, while not providing a table will use
 	allowHexadecimalIntegers = true,
 
 	--- Apply indentation to tables nested within other tables/arrays.
-	indentSubTables = true,
+	indentSubTables = false,
 
 	--- Apply indentation to array elements when the array is forced to wrap over multiple lines.
-	indentArrayElements = true,
+	indentArrayElements = false,
 
 	--- Combination of `indentSubTables` and `indentArrayElements`.
 	indentation = true,
