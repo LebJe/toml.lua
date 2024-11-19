@@ -20,7 +20,7 @@ local record toml
 	
 	--- Encodes a Lua table into a TOML document, and **appends** that document to a file.
 	--- @param data table: The Lua table to be encoded.
-	--- @param file string: The file to write the document to/
+	--- @param file string: The file to write the document to.
 	--- @param options FormattingOptions|nil: Options for formatting the YAML document. Pass `{}` to remove all options, or no table to use the default options.
 	encodeToFile: function(data: { string: any }, fileOrOptions: string|EncodeToFileOptions, options: FormattingOptions|nil)
 	
