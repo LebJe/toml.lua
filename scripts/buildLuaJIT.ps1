@@ -17,7 +17,7 @@ New-Item -Path $installDir -ItemType "directory" -Name "include"
 New-Item -Path $installDir -ItemType "directory" -Name "share"
 New-Item -Path $installDir -ItemType "directory" -Name "jit"
 
-git clone https://luajit.org/git/luajit.git LuaJIT-git --branch v2.1 --depth 1
+git clone https://luajit.org/git/luajit.git LuaJIT-git --branch v2.1
 
 Set-Location "LuaJIT-git"
 
