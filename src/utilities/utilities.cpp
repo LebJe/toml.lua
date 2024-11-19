@@ -106,26 +106,27 @@ toml::format_flags tableToFormatFlags(sol::optional<sol::table> t) {
 
 	// User passed an empty table to clear all flags.
 	if (table.empty()) return flags;
-	
+
 	// Set default flags, and allow user to override
 	std::map<format_flags, bool> userFlags = defaultFlags;
-	
+
 	for (auto [flag, enabled] : userFlags) {
 		std::string camelCaseFlagName = camelCase(magic_enum::enum_name(flag));
 		if (table[camelCaseFlagName].valid()) {
 			userFlags[flag] = table[camelCaseFlagName].get<bool>();
 		}
 	}
-	
-	// `format_flags::indentation` is returned as an empty string from `magic_enum::enum_name`, so we must handle it separately.
+
+	// `format_flags::indentation` is returned as an empty string from `magic_enum::enum_name`, so
+	// we must handle it separately.
 	if (table["indentation"].valid()) {
 		userFlags[toml::format_flags::indentation] = table["indentation"].get<bool>();
 	}
-	
+
 	for (auto [flag, enabled] : userFlags) {
 		if (enabled) flags |= flag;
 	}
-	
+
 	return flags;
 }
 

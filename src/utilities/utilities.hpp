@@ -36,8 +36,9 @@ std::string parseErrorToString(toml::parse_error e);
 /// Inserts the values in `e` into `table`.
 void parseErrorToTable(toml::parse_error e, sol::table & table);
 
-/// Takes a Lua table, with keys representing flag names, and values, and converts it to `toml::format_flags`. 
-/// If the table is nil, all format flags are set to their default value, if the table is empty, `toml::format_flags` is set to none.
+/// Takes a Lua table, with keys representing flag names, and values, and converts it to
+/// `toml::format_flags`. If the table is nil, all format flags are set to their default value, if
+/// the table is empty, `toml::format_flags` is set to none.
 toml::format_flags tableToFormatFlags(sol::optional<sol::table> t);
 
 Options tableToOptions(sol::optional<sol::table> t);
@@ -56,9 +57,8 @@ std::optional<std::string> keyToString(sol::object key);
 /// If a string is not on the stack, then an integer from `luaL_argerror` is returned.
 std::variant<int, toml::table *> getTableFromStringInState(sol::state_view state, int index = 1);
 
-template <>
-struct magic_enum::customize::enum_range<toml::format_flags> {
-  static constexpr bool is_flags = true;
+template <> struct magic_enum::customize::enum_range<toml::format_flags> {
+	static constexpr bool is_flags = true;
 };
 
 #endif /* UTILITIES_H */
