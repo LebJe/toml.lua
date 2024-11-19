@@ -17,10 +17,9 @@ New-Item -Path $installDir -ItemType "directory" -Name "include"
 New-Item -Path $installDir -ItemType "directory" -Name "share"
 New-Item -Path $installDir -ItemType "directory" -Name "jit"
 
-Invoke-WebRequest -Uri "https://luajit.org/download/LuaJIT-2.1.0-beta3.tar.gz" -OutFile "LuaJIT.tar.gz"
-tar -xzvf "LuaJIT.tar.gz"
-Remove-Item "LuaJIT.tar.gz"
-Set-Location "LuaJIT-2.1.0-beta3"
+git clone https://luajit.org/git/luajit.git --branch v2.1 --depth 1
+
+Set-Location "luajit"
 
 mingw32-make.exe
 
@@ -35,4 +34,4 @@ Copy-Item "src\luajit.exe" -Destination "$($installDir)\bin"
 Copy-Item "src\lua51.dll" -Destination "$($installDir)\bin"
 
 Set-Location "$($pwd.Path)\.."
-Remove-Item -Recurse -Force "LuaJit-2.1.0-beta3"
+Remove-Item -Recurse -Force "luajit"
