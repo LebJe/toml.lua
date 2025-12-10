@@ -49,7 +49,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/ThePhD/sol2.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v3.3.0"
+	GIT_TAG "v3.5.0"
 )
 
 FetchContent_Declare(
@@ -69,6 +69,8 @@ endif()
 FetchContent_GetProperties(${SOL2})
 if(NOT ${SOL2}_POPULATED)
     message(STATUS "Cloning ${SOL2}")
+option(SOL2_ENABLE_INSTALL "Enable installation of Sol2" ON)
+	set(SOL2_ENABLE_INSTALL OFF)
     FetchContent_MakeAvailable(${SOL2})
 endif()
 
