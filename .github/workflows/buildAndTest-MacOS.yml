@@ -1,5 +1,9 @@
 name: "Build and Test on MacOS"
-on: ["push", "pull_request"]
+on:
+    push:
+        branches:
+            - "main"
+    pull_request:
 
 jobs:
     RunTestsOnMac:
@@ -10,7 +14,7 @@ jobs:
                 lua: ["lua", "luajit"]
                 compiler: ["gcc", "clang"]
         steps:
-            - uses: "actions/checkout@v4"
+            - uses: "actions/checkout@v6"
             - name: "Install Dependencies"
               run: |
                   brew install ${{ matrix.lua }} luarocks
@@ -24,8 +28,13 @@ jobs:
                   luarocks install luaunit
             - name: "Build Project"
               run: |
-                  export CXX_COMPILER="$(brew --prefix)/bin/g++-13"
-                  export C_COMPILER="$(brew --prefix)/bin/gcc-13"
+                  if [[ "${{ matrix.compiler }}" = "gcc" ]]; then
+                    export CXX_COMPILER="$(brew --prefix)/bin/g++-13"
+                    export C_COMPILER="$(brew --prefix)/bin/gcc-13"
+                  else
+                    export CXX_COMPILER="$(which clang++)"
+                    export C_COMPILER="$(which clang)"
+                  fi
                   CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
             - name: "Test Project"
               run: "lua tests/tests.lua"
