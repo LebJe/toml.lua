@@ -24,7 +24,7 @@ jobs:
               shell: freebsd {0}
               run: |
                   pkg update
-                  pkg install bash sudo -y
+                  pkg install -y bash sudo
                   bash
                   cd $GITHUB_WORKSPACE;
                   export COMPILER=${{ matrix.compiler }}
