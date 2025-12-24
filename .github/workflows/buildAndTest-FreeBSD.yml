@@ -19,7 +19,7 @@ jobs:
               uses: vmactions/freebsd-vm@v1.3.0
               id: vm
               with:
-                  usesh: true
+                  #usesh: true
                   prepare: |
                       pkg update
                       pkg install -y sudo bash
