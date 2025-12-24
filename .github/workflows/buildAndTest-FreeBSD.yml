@@ -23,11 +23,14 @@ jobs:
             - name: "Add Dependencies"
               shell: freebsd {0}
               run: |
+                  pkg update
+                  pkg install bash sudo -y
+                  bash
                   cd $GITHUB_WORKSPACE;
                   export COMPILER=${{ matrix.compiler }}
                   ./scripts/compilerName.sh
                   pkg update
-                  pkg install sudo
+                  pkg install sudo -y
                   sudo pkg install -y ${{ matrix.lua }} "$C_COMPILER_PACKAGE" "$CXX_COMPILER_PACKAGE"
                   ./scripts/buildLuaRocks.sh
                   sudo luarocks
@@ -35,6 +38,7 @@ jobs:
             - name: "Build Project"
               shell: freebsd {0}
               run: |
+                  bash
                   cd $GITHUB_WORKSPACE;
                   export COMPILER=${{ matrix.compiler }}
                   source scripts/compilerName.sh
@@ -44,5 +48,6 @@ jobs:
             - name: "Test Project"
               shell: freebsd {0}
               run: |
+                  bash
                   cd $GITHUB_WORKSPACE;
                   ${{ matrix.lua }} tests/tests.lua
