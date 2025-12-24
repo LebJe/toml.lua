@@ -23,7 +23,7 @@ jobs:
                   prepare: |
                       pkg update
                       pkg install -y sudo bash
-                      chsh -s /usr/bin/bash
+                      chsh -s /usr/local/bin/bash
             - name: "Add Dependencies"
               shell: freebsd {0}
               run: |
