@@ -20,12 +20,13 @@ jobs:
               id: vm
               with:
                   usesh: true
+                  prepare: |
+                      pkg update
+                      pkg install -y sudo bash
+                      chsh -s /usr/bin/bash
             - name: "Add Dependencies"
               shell: freebsd {0}
               run: |
-                  pkg update
-                  pkg install -y bash sudo
-                  bash
                   cd $GITHUB_WORKSPACE
                   export COMPILER=${{ matrix.compiler }}
                   source ./scripts/compilerName.sh
