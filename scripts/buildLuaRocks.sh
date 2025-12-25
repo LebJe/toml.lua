@@ -1,5 +1,3 @@
-#!/bin/bash
-
 
 case $(uname -v) in
     *FreeBSD*)
