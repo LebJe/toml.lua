@@ -1,6 +1,7 @@
 
 case $(uname -v) in
     *FreeBSD*)
+		LUA_BIN_PATH=/usr/local/bin/
 		sudo pkg install -y unzip wget gmake readline curl
         ;;
     *)
@@ -12,7 +13,15 @@ wget "https://luarocks.org/releases/luarocks-3.12.2.tar.gz"
 tar -zxpf luarocks-3.12.2.tar.gz
 rm luarocks-3.12.2.tar.gz
 cd luarocks-3.12.2
-./configure
+case $(uname -v) in
+    *FreeBSD*)
+		./configure --with-lua-bin $LUA_BIN_DIR
+        ;;
+    *)
+		./configure
+        ;;
+	esac
+
 make
 sudo make install
 mkdir ~/.luarocks
