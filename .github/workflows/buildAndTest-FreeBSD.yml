@@ -23,30 +23,33 @@ jobs:
                   prepare: |
                       pkg update
                       pkg install -y sudo bash
-                      chsh -s /usr/local/bin/bash
             - name: "Add Dependencies"
               shell: freebsd {0}
               run: |
-                  cd $GITHUB_WORKSPACE
-                  export COMPILER=${{ matrix.compiler }}
-                  source ./scripts/compilerName.sh
-                  sudo pkg install -y ${{ matrix.lua }} $C_COMPILER_PACKAGE $CXX_COMPILER_PACKAGE
-                  ./scripts/buildLuaRocks.sh
-                  sudo luarocks
-                  sudo luarocks install luaunit
+                  bash -xc "
+                    cd $GITHUB_WORKSPACE
+                    export COMPILER=${{ matrix.compiler }}
+                    source ./scripts/compilerName.sh
+                    sudo pkg install -y ${{ matrix.lua }} $C_COMPILER_PACKAGE $CXX_COMPILER_PACKAGE
+                    ./scripts/buildLuaRocks.sh
+                    sudo luarocks
+                    sudo luarocks install luaunit
+                  "
             - name: "Build Project"
               shell: freebsd {0}
               run: |
-                  bash
-                  cd $GITHUB_WORKSPACE;
-                  export COMPILER=${{ matrix.compiler }}
-                  source scripts/compilerName.sh
-                  sudo luarocks config "variables.CMAKE_C_COMPILER" "$C_COMPILER"
-                  sudo luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
-                  sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
+                  bash -xc "
+                    cd $GITHUB_WORKSPACE
+                    export COMPILER=${{ matrix.compiler }}
+                    source scripts/compilerName.sh
+                    sudo luarocks config \"variables.CMAKE_C_COMPILER\" \"$C_COMPILER\"
+                    sudo luarocks config \"variables.CMAKE_CXX_COMPILER\" \"$CXX_COMPILER\"
+                    sudo CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" luarocks make
+                  "
             - name: "Test Project"
               shell: freebsd {0}
               run: |
-                  bash
-                  cd $GITHUB_WORKSPACE;
-                  ${{ matrix.lua }} tests/tests.lua
+                  bash -xc ""
+                    cd $GITHUB_WORKSPACE
+                    ${{ matrix.lua }} tests/tests.lua
+                  "
