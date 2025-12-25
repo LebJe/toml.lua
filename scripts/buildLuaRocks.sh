@@ -1,7 +1,6 @@
 
 case $(uname -v) in
     *FreeBSD*)
-		export LUA_BIN_PATH=/usr/local/bin/
 		sudo pkg install -y unzip wget gmake readline curl
         ;;
     *)
@@ -15,7 +14,7 @@ rm luarocks-3.12.2.tar.gz
 cd luarocks-3.12.2
 case $(uname -v) in
     *FreeBSD*)
-		./configure --with-lua-bin $LUA_BIN_PATH
+		./configure --with-lua-bin "usr/local/bin"
         ;;
     *)
 		./configure
