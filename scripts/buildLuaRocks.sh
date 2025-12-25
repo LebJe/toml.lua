@@ -14,7 +14,7 @@ rm luarocks-3.12.2.tar.gz
 cd luarocks-3.12.2
 case $(uname -v) in
     *FreeBSD*)
-		./configure --with-lua-bin="/usr/local/bin/$LUA_BIN_NAME"
+		./configure --with-lua-bin="/usr/local/bin/"
         ;;
     *)
 		./configure
