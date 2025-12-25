@@ -30,7 +30,7 @@ jobs:
                     cd $GITHUB_WORKSPACE
                     export COMPILER=${{ matrix.compiler }}
                     source ./scripts/compilerName.sh
-                    sudo pkg install -y cmake ${{ matrix.lua }} "$C_COMPILER_PACKAGE" "$CXX_COMPILER_PACKAGE"
+                    sudo pkg install -y cmake ${{ matrix.lua }} "$C_COMPILER_PACKAGE"
                     export LUA_BIN_NAME=${{ matrix.lua }}
                     bash -x scripts/buildLuaRocks.sh
                     sudo luarocks
