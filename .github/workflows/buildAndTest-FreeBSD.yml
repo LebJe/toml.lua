@@ -30,7 +30,7 @@ jobs:
                     cd $GITHUB_WORKSPACE
                     export COMPILER=${{ matrix.compiler }}
                     source ./scripts/compilerName.sh
-                    sudo pkg install -y cmake ${{ matrix.lua }} \"$C_COMPILER_PACKAGE\" \"$CXX_COMPILER_PACKAGE\"
+                    sudo pkg install -y cmake ${{ matrix.lua }} "$C_COMPILER_PACKAGE" "$CXX_COMPILER_PACKAGE"
                     bash scripts/buildLuaRocks.sh
                     sudo luarocks
                     sudo luarocks install luaunit
@@ -42,9 +42,9 @@ jobs:
                     cd $GITHUB_WORKSPACE
                     export COMPILER=${{ matrix.compiler }}
                     source scripts/compilerName.sh
-                    sudo luarocks config \"variables.CMAKE_C_COMPILER\" \"$C_COMPILER\"
-                    sudo luarocks config \"variables.CMAKE_CXX_COMPILER\" \"$CXX_COMPILER\"
-                    sudo CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" luarocks make
+                    sudo luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
+                    sudo luarocks config "variables.CMAKE_C_COMPILER" "$C_COMPILER"
+                    sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
                   '
             - name: "Test Project"
               shell: freebsd {0}
