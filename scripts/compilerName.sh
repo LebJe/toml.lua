@@ -14,8 +14,8 @@ if [[ $COMPILER = "gcc" ]]; then
         ;;
 	esac
 	
-	export C_COMPILER="/usr/bin/gcc"
-	export CXX_COMPILER="/usr/bin/g++"
+	export C_COMPILER="$(which gcc)"
+	export CXX_COMPILER="$(which g++)"
 elif [[ $COMPILER = "clang" ]]; then
 	case $(uname -v) in
     *FreeBSD*)
@@ -28,6 +28,6 @@ elif [[ $COMPILER = "clang" ]]; then
         ;;
 	esac
 
-	export C_COMPILER="/usr/bin/clang"
-	export CXX_COMPILER="/usr/bin/clang++"
+	export C_COMPILER="$(which clang)"
+	export CXX_COMPILER="$(which clang++)"
 fi
