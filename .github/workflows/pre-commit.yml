@@ -1,0 +1,33 @@
+name: "Run pre-commit"
+on:
+    push:
+        branches:
+            - "main"
+    pull_request:
+        
+jobs:
+    PreCommit:
+        permissions:
+          contents: "write"
+        runs-on: "macos-latest"
+        steps:
+            - uses: "actions/checkout@v6"
+              with:
+                ref: ${{ github.head_ref }}
+            - name: "Install Dependencies"
+              run: "brew bundle"
+            - name: "Run Pre-Commit"
+              id: "run-pre-commit"
+              run: |
+                EXIT_CODE=0
+                pre-commit run --all --color=always --show-diff-on-failure || EXIT_CODE=$?
+                if [[ $EXIT_CODE -ne 0 ]]; then
+                    echo "SHOULD_COMMIT=true" >> "$GITHUB_OUTPUT"
+                else
+                    echo "SHOULD_COMMIT=false" >> "$GITHUB_OUTPUT"
+                fi;
+            - uses: stefanzweifel/git-auto-commit-action@v7
+              if: contains(steps.run-pre-commit.outputs.SHOULD_COMMIT, 'true')
+              with:
+                commit_message: "Run pre-commit hooks."
+                
