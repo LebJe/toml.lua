@@ -1,0 +1,75 @@
+name: "Build and Test on FreeBSD"
+on:
+    push:
+        branches:
+            - "main"
+    pull_request:
+
+jobs:
+    RunTestsOnFreeBSD:
+        name: "FreeBSD 15"
+        runs-on: "ubuntu-latest"
+        strategy:
+            matrix:
+                compiler: ["gcc", "clang"]
+                lua: ["luajit", "lua54", "lua53", "lua52", "lua51"]
+        steps:
+            - uses: "actions/checkout@v6"
+            - name: "Setup FreeBSD VM"
+              uses: vmactions/freebsd-vm@v1
+              id: vm
+              with:
+                  #usesh: true
+                  prepare: |
+                      pkg update
+                      pkg install -y sudo bash
+            - name: "Add Dependencies"
+              shell: freebsd {0}
+              run: |
+                  bash -xc '
+                    cd $GITHUB_WORKSPACE
+                    export COMPILER=${{ matrix.compiler }}
+                    source ./scripts/compilerName.sh
+                    sudo pkg install -y cmake git ${{ matrix.lua }} "$C_COMPILER_PACKAGE"
+                    export LUA_BIN_NAME=${{ matrix.lua }}
+                    case ${{ matrix.lua }} in
+                        *lua54*)
+                            bash -x scripts/buildLuaRocks.sh "5.4"
+                            ;;
+                        *lua53*)
+                            bash -x scripts/buildLuaRocks.sh "5.3"
+                            ;;
+                        *lua52*)
+                            bash -x scripts/buildLuaRocks.sh "5.2"
+                            ;;
+                        *lua51*)
+                            bash -x scripts/buildLuaRocks.sh "5.1"
+                            ;;
+                        *luajit*)
+                            bash -x scripts/buildLuaRocks.sh "5.1"
+                            ;;
+                        *)
+                            bash -x scripts/buildLuaRocks.sh
+                            ;;
+                    esac
+                    sudo luarocks
+                    sudo luarocks install luaunit
+                  '
+            - name: "Build Project"
+              shell: freebsd {0}
+              run: |
+                  bash -xc '
+                    cd $GITHUB_WORKSPACE
+                    export COMPILER=${{ matrix.compiler }}
+                    source scripts/compilerName.sh
+                    sudo luarocks config "variables.CMAKE_CXX_COMPILER" "$CXX_COMPILER"
+                    sudo luarocks config "variables.CMAKE_C_COMPILER" "$C_COMPILER"
+                    sudo CXX="$CXX_COMPILER" CC="$C_COMPILER" luarocks make
+                  '
+            - name: "Test Project"
+              shell: freebsd {0}
+              run: |
+                  bash -xc '
+                    cd $GITHUB_WORKSPACE
+                    ${{ matrix.lua }} tests/tests.lua
+                  '

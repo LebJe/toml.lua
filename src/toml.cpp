@@ -33,8 +33,9 @@ template <class T> inline int tomlTo(sol::state_view state, toml::format_flags f
 		return luaL_argerror(
 			L, 1,
 			std::string(
-				std::string("A string containing a TOML document, or a table with strings as keys "
-							"should be the first argument, not") +
+				std::string(
+					"A string containing a TOML document, or a table with strings as keys "
+					"should be the first argument, not") +
 				solLuaDataTypeToString(sol::type_of(L, 1)))
 				.c_str());
 	}
@@ -103,8 +104,9 @@ extern "C" {
 				return luaL_argerror(
 					L, 2,
 					std::string(
-						std::string("A file path (string), or a table should be the second "
-									"argument, not ") +
+						std::string(
+							"A file path (string), or a table should be the second "
+							"argument, not ") +
 						solLuaDataTypeToString(sol::type_of(L, 2)))
 						.c_str());
 			}

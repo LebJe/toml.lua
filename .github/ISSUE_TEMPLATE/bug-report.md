@@ -12,10 +12,10 @@ A clear and concise description of what the bug is.
 
 ## Version and Installation Info
 
--   toml.lua version:
--   Operating system:
--   Installation method: (Manual compilation or `luarocks install toml`)
--   Compilation log, or Luarocks installation log:
+- toml.lua version:
+- Operating system:
+- Installation method: (Manual compilation or `luarocks install toml`)
+- Compilation log, or Luarocks installation log:
 
 ```shell
 # Paste installation or compilation log here

@@ -4,6 +4,7 @@
 
 [![Build and Test on MacOS](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-MacOS.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-MacOS.yml)
 [![Build and Test on Linux](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Linux.yml)
+[![Build and Test on FreeBSD](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-FreeBSD.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-FreeBSD.yml)
 [![Build and Test on Windows](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml/badge.svg)](https://github.com/LebJe/toml.lua/actions/workflows/buildAndTest-Windows.yml)
 [![LuaRocks](https://img.shields.io/luarocks/v/LebJe/toml?color=blue&label=LuaRocks&logo=Lua)](https://luarocks.org/modules/LebJe/toml)
 
@@ -13,39 +14,39 @@ toml.lua is a [Lua](https://www.lua.org) wrapper around [toml++](https://github.
 
 <!--ts-->
 
--   [toml.lua](#tomllua)
-    -   [Table of Contents](#table-of-contents)
-    -   [Installation](#installation)
-        -   [Requirements](#requirements)
-        -   [LuaRocks](#luarocks)
-            -   [MacOS and Linux](#macos-and-linux)
-            -   [Windows](#windows)
-                -   [LLVM](#llvm)
-                -   [MinGW](#mingw)
-        -   [Manual Compilation](#manual-compilation)
-            -   [MacOS and Linux](#macos-and-linux-1)
-            -   [Windows](#windows-1)
-                -   [Build with MinGW](#build-with-mingw)
-                -   [Build with LLVM](#build-with-llvm)
-                -   [Install LuaJIT](#install-luajit)
-    -   [Usage](#usage)
-        -   [Decoding](#decoding)
-            -   [Decoding Options](#decoding-options)
-                -   [temporalTypesAsUserData](#temporaltypesasuserdata)
-                -   [formattedIntsAsUserData](#formattedintsasuserdata)
-        -   [Encoding](#encoding)
-        -   [Error Handling](#error-handling)
-        -   [Inline Tables](#inline-tables)
-        -   [TOML Conversion](#toml-conversion)
-            -   [JSON](#json)
-            -   [YAML](#yaml)
-        -   [Output Formatting](#output-formatting)
-            -   [Formatting Integers](#formatting-integers)
-            -   [Formatting TOML, JSON, or YAML](#formatting-toml-json-or-yaml)
-        -   [Date and Time](#date-and-time)
-    -   [Dependencies](#dependencies)
-    -   [Licenses](#licenses)
-    -   [Contributing](#contributing)
+- [toml.lua](#tomllua)
+    - [Table of Contents](#table-of-contents)
+    - [Installation](#installation)
+        - [Requirements](#requirements)
+        - [LuaRocks](#luarocks)
+            - [MacOS and Linux](#macos-and-linux)
+            - [Windows](#windows)
+                - [LLVM](#llvm)
+                - [MinGW](#mingw)
+        - [Manual Compilation](#manual-compilation)
+            - [MacOS and Linux](#macos-and-linux-1)
+            - [Windows](#windows-1)
+                - [Build with MinGW](#build-with-mingw)
+                - [Build with LLVM](#build-with-llvm)
+                - [Install LuaJIT](#install-luajit)
+    - [Usage](#usage)
+        - [Decoding](#decoding)
+            - [Decoding Options](#decoding-options)
+                - [temporalTypesAsUserData](#temporaltypesasuserdata)
+                - [formattedIntsAsUserData](#formattedintsasuserdata)
+        - [Encoding](#encoding)
+        - [Error Handling](#error-handling)
+        - [Inline Tables](#inline-tables)
+        - [TOML Conversion](#toml-conversion)
+            - [JSON](#json)
+            - [YAML](#yaml)
+        - [Output Formatting](#output-formatting)
+            - [Formatting Integers](#formatting-integers)
+            - [Formatting TOML, JSON, or YAML](#formatting-toml-json-or-yaml)
+        - [Date and Time](#date-and-time)
+    - [Dependencies](#dependencies)
+    - [Licenses](#licenses)
+    - [Contributing](#contributing)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
 <!-- Added by: lebje, at: Tue Jan  2 11:59:28 EST 2024 -->
@@ -58,11 +59,11 @@ Created by [gh-md-toc](https://github.com/ekalinin/github-markdown-toc)
 
 ### Requirements
 
--   A C++ 17 compiler (Clang, GCC, MinGW)
--   [CMake](https://cmake.org)
--   Lua C headers (`lua.h`, `lualib.h`, and `lauxlib.h`)
--   Lua library (e.g. `liblua51.<so|dylib|dll>`)
--   Lua >= 5.1 or LuaJIT
+- A C++ 17 compiler (Clang, GCC, MinGW)
+- [CMake](https://cmake.org)
+- Lua C headers (`lua.h`, `lualib.h`, and `lauxlib.h`)
+- Lua library (e.g. `liblua51.<so|dylib|dll>`)
+- Lua >= 5.1 or LuaJIT
 
 ### LuaRocks
 
@@ -204,16 +205,16 @@ end
 
 ##### `temporalTypesAsUserData`
 
--   `temporalTypesAsUserData = true`: The userdata types `toml.Date`, `toml.Time`, and `toml.DateTime` are used to represent TOML date and time types.
+- `temporalTypesAsUserData = true`: The userdata types `toml.Date`, `toml.Time`, and `toml.DateTime` are used to represent TOML date and time types.
 
--   `temporalTypesAsUserData = false`: Lua tables are used to represent TOML date and time types.
+- `temporalTypesAsUserData = false`: Lua tables are used to represent TOML date and time types.
 
 > The default value is `true`
 
 ##### `formattedIntsAsUserData`
 
--   `formattedIntsAsUserData = true`: The userdata type `toml.Int` is used to represent integers in octal, binary, or hexadecimal format.
--   `formattedIntsAsUserData = false`: Integers in octal, binary, or hexadecimal format will be represented in decimal.
+- `formattedIntsAsUserData = true`: The userdata type `toml.Int` is used to represent integers in octal, binary, or hexadecimal format.
+- `formattedIntsAsUserData = false`: Integers in octal, binary, or hexadecimal format will be represented in decimal.
 
 > The default value is `false`
 
@@ -581,9 +582,9 @@ Passing an empty table removes all options, while not providing a table will use
 
 ## Dependencies
 
--   [toml++](https://github.com/marzer/tomlplusplus/)
--   [sol2](https://github.com/ThePhD/sol2)
--   [magic_enum](https://github.com/Neargye/magic_enum)
+- [toml++](https://github.com/marzer/tomlplusplus/)
+- [sol2](https://github.com/ThePhD/sol2)
+- [magic_enum](https://github.com/Neargye/magic_enum)
 
 ## Licenses
 
