@@ -45,6 +45,9 @@ jobs:
                         *lua51*)
                             bash -x scripts/buildLuaRocks.sh "5.1"
                             ;;
+                        *luajit*)
+                            bash -x scripts/buildLuaRocks.sh "5.1"
+                            ;;
                         *)
                             bash -x scripts/buildLuaRocks.sh
                             ;;
