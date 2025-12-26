@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The formatting options that were passed as a parameter to `toml.encode`, `toml.encodeToFile`, `toml.toJSON`, and `toml.toYAML` previously had no effect when overriding values.
--   Resolved CMake `FetchContent_Populate` warning.
+- Resolved CMake `FetchContent_Populate` warning.
 
 ### Changed
 
