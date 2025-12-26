@@ -1,3 +1,4 @@
+# First arg is lua version: 5.4, 5.3, 5.2, 5.1
 
 case $(uname -v) in
     *FreeBSD*)
@@ -12,14 +13,32 @@ wget "https://luarocks.org/releases/luarocks-3.12.2.tar.gz"
 tar -zxpf luarocks-3.12.2.tar.gz
 rm luarocks-3.12.2.tar.gz
 cd luarocks-3.12.2
-case $(uname -v) in
-    *FreeBSD*)
-		./configure --with-lua-bin="/usr/local/bin/"
+# case $(uname -v) in
+#     *FreeBSD*)
+# 		./configure --with-lua-bin="/usr/local/bin/"
+#         ;;
+#     *)
+# 		./configure
+#         ;;
+# 	esac
+
+case $1 in
+    *5.4*)
+		./configure --lua-version="5.4"
+        ;;
+    *5.3*)
+		./configure --lua-version="5.3"
+        ;;
+    *5.2*)
+		./configure --lua-version="5.2"
+        ;;
+    *5.1*)
+		./configure --lua-version="5.1"
         ;;
     *)
 		./configure
         ;;
-	esac
+esac
 
 make
 sudo make install

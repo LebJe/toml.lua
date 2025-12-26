@@ -16,7 +16,7 @@ jobs:
         steps:
             - uses: "actions/checkout@v6"
             - name: "Setup FreeBSD VM"
-              uses: vmactions/freebsd-vm@v1.3.0
+              uses: vmactions/freebsd-vm@v1
               id: vm
               with:
                   #usesh: true
@@ -32,7 +32,23 @@ jobs:
                     source ./scripts/compilerName.sh
                     sudo pkg install -y cmake git ${{ matrix.lua }} "$C_COMPILER_PACKAGE"
                     export LUA_BIN_NAME=${{ matrix.lua }}
-                    bash -x scripts/buildLuaRocks.sh
+                    case ${{ matrix.lua }} in
+                        *lua54*)
+                            bash -x scripts/buildLuaRocks.sh "5.4"
+                            ;;
+                        *lua53*)
+                            bash -x scripts/buildLuaRocks.sh "5.3"
+                            ;;
+                        *lua52*)
+                            bash -x scripts/buildLuaRocks.sh "5.2"
+                            ;;
+                        *lua51*)
+                            bash -x scripts/buildLuaRocks.sh "5.1"
+                            ;;
+                        *)
+                            bash -x scripts/buildLuaRocks.sh
+                            ;;
+                    esac
                     sudo luarocks
                     sudo luarocks install luaunit
                   '
