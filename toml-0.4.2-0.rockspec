@@ -1,5 +1,5 @@
 package = "toml"
-version = "0.4.1-0"
+version = "0.4.2-0"
 
 local v = version:gsub("%-%d", "")
 
