@@ -21,16 +21,16 @@ jobs:
 
                   if [[ "${{ matrix.compiler }}" = "gcc" ]]; then
                     brew install gcc
-                    luarocks config "variables.CMAKE_C_COMPILER" "$(brew --prefix)/bin/gcc-13"
-                    luarocks config "variables.CMAKE_CXX_COMPILER" "$(brew --prefix)/bin/g++-13"
+                    luarocks config "variables.CMAKE_C_COMPILER" "$(brew --prefix)/bin/gcc-15"
+                    luarocks config "variables.CMAKE_CXX_COMPILER" "$(brew --prefix)/bin/g++-15"
                   fi
 
                   luarocks install luaunit
             - name: "Build Project"
               run: |
                   if [[ "${{ matrix.compiler }}" = "gcc" ]]; then
-                    export CXX_COMPILER="$(brew --prefix)/bin/g++-13"
-                    export C_COMPILER="$(brew --prefix)/bin/gcc-13"
+                    export CXX_COMPILER="$(brew --prefix)/bin/g++-15"
+                    export C_COMPILER="$(brew --prefix)/bin/gcc-15"
                   else
                     export CXX_COMPILER="$(which clang++)"
                     export C_COMPILER="$(which clang)"

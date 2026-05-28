@@ -1,6 +1,6 @@
 # Adapted from https://github.com/xpol/lua-rapidjson/blob/master/CMakeLists.txt
 
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.6.0 FATAL_ERROR)
 
 set(FALLBACK_VERSION 0.0.1)
 set(TOML++ toml++)
@@ -46,10 +46,10 @@ FetchContent_Declare(
 
 FetchContent_Declare(
 	${SOL2}
-	GIT_REPOSITORY "https://github.com/ThePhD/sol2.git"
+	GIT_REPOSITORY "https://github.com/halx99/sol2.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v3.5.0"
+	GIT_TAG "16a9fabb7ae525d644d3343f15b1de39c8865ecd"
 )
 
 FetchContent_Declare(
@@ -57,7 +57,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY "https://github.com/Neargye/magic_enum.git"
 	GIT_SHALLOW ON
     GIT_SUBMODULES ""
-	GIT_TAG "v0.9.7"
+	GIT_TAG "v0.9.8"
 )
 
 FetchContent_GetProperties(${TOML++})
