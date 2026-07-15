@@ -12,7 +12,7 @@ jobs:
         strategy:
             matrix:
                 compiler: ["gcc", "clang"]
-                lua: ["luajit", "lua54", "lua53", "lua52", "lua51"]
+                lua: ["luajit", "lua55", "lua54", "lua53", "lua52", "lua51"]
         steps:
             - uses: "actions/checkout@v6"
             - name: "Setup FreeBSD VM"
@@ -55,6 +55,7 @@ jobs:
                             bash -x scripts/buildLuaRocks.sh
                             ;;
                     esac
+                    ${{ matrix.lua }} -v
                     sudo luarocks
                     sudo luarocks install luaunit
                   '
