@@ -12,7 +12,7 @@ jobs:
         strategy:
             matrix:
                 compiler: ["gcc", "clang"]
-                lua: ["luajit", "lua54", "lua53", "lua52", "lua51"]
+                lua: ["luajit", "lua55", "lua54", "lua53", "lua52", "lua51"]
         steps:
             - uses: "actions/checkout@v6"
             - name: "Setup FreeBSD VM"
@@ -33,6 +33,9 @@ jobs:
                     sudo pkg install -y cmake git ${{ matrix.lua }} "$C_COMPILER_PACKAGE"
                     export LUA_BIN_NAME=${{ matrix.lua }}
                     case ${{ matrix.lua }} in
+                        *lua55*)
+                            bash -x scripts/buildLuaRocks.sh "5.5"
+                            ;;
                         *lua54*)
                             bash -x scripts/buildLuaRocks.sh "5.4"
                             ;;
@@ -52,6 +55,7 @@ jobs:
                             bash -x scripts/buildLuaRocks.sh
                             ;;
                     esac
+                    ${{ matrix.lua }} -v
                     sudo luarocks
                     sudo luarocks install luaunit
                   '

@@ -1,4 +1,4 @@
-# First argument is the Lua version Luarocks should use: 5.4, 5.3, 5.2, 5.1
+# First argument is the Lua version Luarocks should use: 5.5, 5.4, 5.3, 5.2, 5.1
 
 case $(uname -v) in
     *FreeBSD*)
@@ -9,12 +9,15 @@ case $(uname -v) in
         ;;
 	esac
 
-wget "https://luarocks.org/releases/luarocks-3.12.2.tar.gz"
-tar -zxpf luarocks-3.12.2.tar.gz
-rm luarocks-3.12.2.tar.gz
-cd luarocks-3.12.2
+wget "https://luarocks.org/releases/luarocks-3.13.0.tar.gz"
+tar -zxpf luarocks-3.13.0.tar.gz
+rm luarocks-3.13.0.tar.gz
+cd luarocks-3.13.0
 
 case $1 in
+    *5.5*)
+		./configure --lua-version="5.5"
+        ;;
     *5.4*)
 		./configure --lua-version="5.4"
         ;;
